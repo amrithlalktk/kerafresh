@@ -1,0 +1,100 @@
+import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { getSession } from "@/lib/auth";
+import { saleSchema } from "@/lib/validation";
+import { toCents } from "@/lib/money";
+import type { Prisma } from "@prisma/client";
+
+const SALE_INCLUDE = {
+  party: { select: { name: true } },
+  items: { include: { item: { select: { name: true, unit: true } } } },
+  charges: true,
+  payments: { orderBy: { date: "asc" } },
+  recordedBy: { select: { name: true } },
+} satisfies Prisma.SaleInclude;
+
+async function canModify(userId: string, isAdmin: boolean, saleId: string) {
+  if (isAdmin) return true;
+  const sale = await db.sale.findUnique({ where: { id: saleId }, select: { userId: true } });
+  return sale?.userId === userId;
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+  if (!(await canModify(session.userId, session.role === "ADMIN", id))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const body = await request.json();
+  const parsed = saleSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  // paid/paymentMethod are intentionally not applied here — once a sale
+  // exists, its paidCents only changes via the payment-history endpoint
+  // (POST /api/sales/[id]/payments), so editing item/charge details can
+  // never clobber payments already recorded against it.
+  const { date, partyId, items, charges, notes } = parsed.data;
+  const lineData = items.map((line) => {
+    const priceCents = toCents(line.price);
+    return {
+      itemId: line.itemId,
+      quantity: line.quantity,
+      priceCents,
+      lineTotalCents: priceCents * line.quantity,
+    };
+  });
+  const chargeData = charges.map((charge) => ({
+    chargeTypeId: charge.chargeTypeId || null,
+    label: charge.label,
+    amountCents: toCents(charge.amount),
+  }));
+  const totalCents =
+    lineData.reduce((sum, l) => sum + l.lineTotalCents, 0) +
+    chargeData.reduce((sum, c) => sum + c.amountCents, 0);
+
+  const sale = await db.$transaction(async (tx) => {
+    await tx.saleItem.deleteMany({ where: { saleId: id } });
+    await tx.saleCharge.deleteMany({ where: { saleId: id } });
+    return tx.sale.update({
+      where: { id },
+      data: {
+        date: new Date(date),
+        partyId: partyId || null,
+        totalCents,
+        notes: notes || null,
+        items: { create: lineData },
+        charges: { create: chargeData },
+      },
+      include: SALE_INCLUDE,
+    });
+  });
+
+  return NextResponse.json(sale);
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+  if (!(await canModify(session.userId, session.role === "ADMIN", id))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  await db.sale.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
+}

@@ -1,0 +1,231 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  // SQLite for zero-config local dev. To deploy to a hosted Postgres
+  // database, change provider to "postgresql" and set DATABASE_URL
+  // to the Postgres connection string — no other code changes needed.
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+// Category/Transaction are expense-only going forward — income is tracked
+// via Sale. The type field stays for minimal churn but only EXPENSE is
+// ever created now.
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum PartyType {
+  CUSTOMER
+  SUPPLIER
+  BOTH
+}
+
+enum PaymentMethod {
+  CASH
+  BANK
+}
+
+model User {
+  id           String        @id @default(cuid())
+  name         String
+  email        String        @unique
+  passwordHash String
+  role         Role          @default(STAFF)
+  active       Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  transactions Transaction[]
+  sales        Sale[]
+  purchases    Purchase[]
+}
+
+model Category {
+  id           String          @id @default(cuid())
+  name         String
+  type         TransactionType
+  createdAt    DateTime        @default(now())
+  transactions Transaction[]
+
+  @@unique([name, type])
+}
+
+model Transaction {
+  id            String          @id @default(cuid())
+  date          DateTime
+  description   String
+  amountCents   Int
+  type          TransactionType
+  category      Category        @relation(fields: [categoryId], references: [id])
+  categoryId    String
+  recordedBy    User            @relation(fields: [userId], references: [id])
+  userId        String
+  paymentMethod PaymentMethod?
+  notes         String?
+  createdAt     DateTime        @default(now())
+
+  @@index([date])
+  @@index([type])
+}
+
+model Party {
+  id                  String     @id @default(cuid())
+  name                String
+  type                PartyType  @default(BOTH)
+  phone               String?
+  email               String?
+  address             String?
+  gstNumber           String?
+  notes               String?
+  openingBalanceCents Int        @default(0)
+  createdAt           DateTime   @default(now())
+  sales               Sale[]
+  purchases           Purchase[]
+}
+
+model Item {
+  id                 String         @id @default(cuid())
+  name               String
+  unit               String         @default("pcs")
+  salePriceCents     Int
+  purchasePriceCents Int
+  openingStockQty    Int            @default(0)
+  lowStockThreshold  Int?
+  createdAt          DateTime       @default(now())
+  saleItems          SaleItem[]
+  purchaseItems      PurchaseItem[]
+}
+
+// A manageable list of extra charge types (lorry rent, packing charge,
+// coolie, etc.) that can be added on top of a Sale/Purchase's item total.
+// A charge line always stores a denormalized `label` snapshot (like
+// SaleItem.priceCents snapshots an item's price), so historical charges
+// stay readable even if a ChargeType is later renamed or deleted.
+model ChargeType {
+  id              String           @id @default(cuid())
+  name            String           @unique
+  createdAt       DateTime         @default(now())
+  saleCharges     SaleCharge[]
+  purchaseCharges PurchaseCharge[]
+}
+
+model Sale {
+  id            String         @id @default(cuid())
+  date          DateTime
+  party         Party?         @relation(fields: [partyId], references: [id])
+  partyId       String?
+  items         SaleItem[]
+  charges       SaleCharge[]
+  payments      SalePayment[]
+  totalCents    Int
+  // Maintained cache = sum of `payments`, kept in sync whenever a payment
+  // is added/edited/deleted — never edited directly once the sale exists,
+  // so it can't drift from the payment history.
+  paidCents     Int            @default(0)
+  paymentMethod PaymentMethod  @default(CASH)
+  notes         String?
+  recordedBy    User           @relation(fields: [userId], references: [id])
+  userId        String
+  createdAt     DateTime       @default(now())
+
+  @@index([date])
+}
+
+// One installment against a Sale — recorded with its own date/amount/method
+// so a bill can be paid off over several visits instead of one lump sum.
+model SalePayment {
+  id            String        @id @default(cuid())
+  sale          Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  saleId        String
+  date          DateTime
+  amountCents   Int
+  paymentMethod PaymentMethod @default(CASH)
+  notes         String?
+  createdAt     DateTime      @default(now())
+
+  @@index([date])
+}
+
+model SaleItem {
+  id             String @id @default(cuid())
+  sale           Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  saleId         String
+  item           Item   @relation(fields: [itemId], references: [id])
+  itemId         String
+  quantity       Int
+  priceCents     Int
+  lineTotalCents Int
+}
+
+model SaleCharge {
+  id           String      @id @default(cuid())
+  sale         Sale        @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  saleId       String
+  chargeType   ChargeType? @relation(fields: [chargeTypeId], references: [id])
+  chargeTypeId String?
+  label        String
+  amountCents  Int
+}
+
+model Purchase {
+  id            String            @id @default(cuid())
+  date          DateTime
+  party         Party?            @relation(fields: [partyId], references: [id])
+  partyId       String?
+  items         PurchaseItem[]
+  charges       PurchaseCharge[]
+  payments      PurchasePayment[]
+  totalCents    Int
+  // Maintained cache = sum of `payments` — see Sale.paidCents.
+  paidCents     Int               @default(0)
+  paymentMethod PaymentMethod     @default(CASH)
+  notes         String?
+  recordedBy    User              @relation(fields: [userId], references: [id])
+  userId        String
+  createdAt     DateTime          @default(now())
+
+  @@index([date])
+}
+
+// One installment against a Purchase — see SalePayment.
+model PurchasePayment {
+  id            String        @id @default(cuid())
+  purchase      Purchase      @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  purchaseId    String
+  date          DateTime
+  amountCents   Int
+  paymentMethod PaymentMethod @default(CASH)
+  notes         String?
+  createdAt     DateTime      @default(now())
+
+  @@index([date])
+}
+
+model PurchaseItem {
+  id             String   @id @default(cuid())
+  purchase       Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  purchaseId     String
+  item           Item     @relation(fields: [itemId], references: [id])
+  itemId         String
+  quantity       Int
+  priceCents     Int
+  lineTotalCents Int
+}
+
+model PurchaseCharge {
+  id           String      @id @default(cuid())
+  purchase     Purchase    @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  purchaseId   String
+  chargeType   ChargeType? @relation(fields: [chargeTypeId], references: [id])
+  chargeTypeId String?
+  label        String
+  amountCents  Int
+}
