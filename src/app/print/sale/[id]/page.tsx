@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatBillNumber, formatCents } from "@/lib/money";
-import { formatDate } from "@/lib/date";
+import { formatBillDate } from "@/lib/date";
 import { paymentMethodLabel } from "@/lib/types";
 import { COMPANY } from "@/lib/company";
 import PrintButton from "@/components/PrintButton";
@@ -46,7 +46,7 @@ export default async function PrintSalePage({
         <div className="text-right">
           <p className="text-lg font-semibold">Sale Invoice</p>
           <p className="text-sm text-black/60">Bill #{formatBillNumber(sale.billNumber)}</p>
-          <p className="text-sm text-black/60">{formatDate(sale.date)}</p>
+          <p className="text-sm text-black/60">{formatBillDate(sale.date)}</p>
         </div>
       </div>
 
