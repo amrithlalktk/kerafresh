@@ -1,6 +1,15 @@
 export type TransactionType = "INCOME" | "EXPENSE";
 export type PartyType = "CUSTOMER" | "SUPPLIER" | "BOTH";
 export type PaymentMethod = "CASH" | "BANK";
+export type Role = "SUPER_ADMIN" | "ADMIN" | "STAFF";
+
+// Super Admin has every Admin permission everywhere in the app — the only
+// difference is Admins can't see or manage Super Admin accounts themselves
+// (see GET/PATCH /api/users). So any "must be admin" check should pass for
+// both roles; use this instead of comparing against "ADMIN" directly.
+export function isAdminRole(role: Role) {
+  return role === "ADMIN" || role === "SUPER_ADMIN";
+}
 
 const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   CASH: "Cash",

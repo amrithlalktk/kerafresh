@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
+import { isAdminRole } from "@/lib/types";
 
 const PUBLIC_PATHS = ["/login", "/reset-password"];
 const ADMIN_ONLY_PREFIXES = ["/categories", "/users"];
@@ -29,7 +30,7 @@ export async function middleware(request: NextRequest) {
 
   if (
     ADMIN_ONLY_PREFIXES.some((prefix) => pathname.startsWith(prefix)) &&
-    session.role !== "ADMIN"
+    !isAdminRole(session.role)
   ) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }

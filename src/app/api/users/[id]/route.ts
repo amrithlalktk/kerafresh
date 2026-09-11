@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession, hashPassword, createPasswordSetupToken } from "@/lib/auth";
+import { isAdminRole } from "@/lib/types";
 import { sendMail } from "@/lib/mail";
 import { getAppOrigin } from "@/lib/url";
 import { z } from "zod";
@@ -17,10 +18,19 @@ export async function PATCH(
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (session.role !== "ADMIN")
+  if (!isAdminRole(session.role))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
+
+  // Hide Super Admin accounts from Admins entirely — as far as an Admin can
+  // tell, they don't exist, so this returns the same 404 a nonexistent id
+  // would.
+  const target = await db.user.findUnique({ where: { id } });
+  if (target?.role === "SUPER_ADMIN" && session.role !== "SUPER_ADMIN") {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
   const body = await request.json();
   const parsed = patchSchema.safeParse(body);
   if (!parsed.success) {
@@ -37,9 +47,9 @@ export async function PATCH(
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }
 
+  if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
   if (parsed.data.resendInvite) {
-    const target = await db.user.findUnique({ where: { id } });
-    if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 });
     if (target.passwordHash) {
       return NextResponse.json(
         { error: "This user has already set up their account" },
@@ -64,16 +74,18 @@ export async function PATCH(
     );
   }
 
-  if (parsed.data.active === false) {
-    const target = await db.user.findUnique({ where: { id } });
-    if (target?.role === "ADMIN") {
-      const activeAdmins = await db.user.count({ where: { role: "ADMIN", active: true } });
-      if (activeAdmins <= 1) {
-        return NextResponse.json(
-          { error: "Can't deactivate the last active admin" },
-          { status: 400 }
-        );
-      }
+  if (parsed.data.active === false && isAdminRole(target.role)) {
+    // Super Admin counts alongside Admin here — either one can manage
+    // Users/Categories, so the system needs at least one of either kind
+    // active, not specifically one literally named "ADMIN".
+    const activePrivileged = await db.user.count({
+      where: { role: { in: ["ADMIN", "SUPER_ADMIN"] }, active: true },
+    });
+    if (activePrivileged <= 1) {
+      return NextResponse.json(
+        { error: "Can't deactivate the last active admin" },
+        { status: 400 }
+      );
     }
   }
 

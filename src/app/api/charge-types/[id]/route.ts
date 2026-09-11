@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { isAdminRole } from "@/lib/types";
 import { chargeTypeSchema } from "@/lib/validation";
 
 export async function PATCH(
@@ -9,7 +10,7 @@ export async function PATCH(
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (session.role !== "ADMIN")
+  if (!isAdminRole(session.role))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
@@ -36,7 +37,7 @@ export async function DELETE(
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (session.role !== "ADMIN")
+  if (!isAdminRole(session.role))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { isAdminRole } from "@/lib/types";
 
 async function canModify(userId: string, isAdmin: boolean, purchaseId: string) {
   if (isAdmin) return true;
@@ -19,7 +20,7 @@ export async function DELETE(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id, paymentId } = await params;
-  if (!(await canModify(session.userId, session.role === "ADMIN", id))) {
+  if (!(await canModify(session.userId, isAdminRole(session.role), id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

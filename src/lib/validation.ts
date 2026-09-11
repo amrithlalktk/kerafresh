@@ -17,7 +17,7 @@ export const loginSchema = z.object({
 export const inviteUserSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   email: z.string().trim().email("Enter a valid email"),
-  role: z.enum(["ADMIN", "STAFF"]),
+  role: z.enum(["SUPER_ADMIN", "ADMIN", "STAFF"]),
 });
 
 // Categories are expense-only — income is tracked via Sale.

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession, createPasswordSetupToken } from "@/lib/auth";
+import { isAdminRole } from "@/lib/types";
 import { inviteUserSchema } from "@/lib/validation";
 import { sendMail } from "@/lib/mail";
 import { getAppOrigin } from "@/lib/url";
@@ -8,10 +9,13 @@ import { getAppOrigin } from "@/lib/url";
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (session.role !== "ADMIN")
+  if (!isAdminRole(session.role))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const users = await db.user.findMany({
+    // Admins can't see Super Admin accounts at all — Super Admin sees
+    // everyone.
+    where: session.role === "SUPER_ADMIN" ? {} : { role: { not: "SUPER_ADMIN" } },
     select: {
       id: true,
       name: true,
@@ -31,7 +35,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (session.role !== "ADMIN")
+  if (!isAdminRole(session.role))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await request.json();
@@ -44,6 +48,12 @@ export async function POST(request: Request) {
   }
 
   const { name, email, role } = parsed.data;
+
+  // Only a Super Admin can create another Super Admin — a regular Admin
+  // could otherwise mint a peer account it can't even see afterward.
+  if (role === "SUPER_ADMIN" && session.role !== "SUPER_ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   let user;
   try {

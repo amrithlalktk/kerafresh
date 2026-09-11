@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { isAdminRole } from "@/lib/types";
 import { saleSchema } from "@/lib/validation";
 import { toCents } from "@/lib/money";
 import type { Prisma } from "@prisma/client";
@@ -27,7 +28,7 @@ export async function PATCH(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  if (!(await canModify(session.userId, session.role === "ADMIN", id))) {
+  if (!(await canModify(session.userId, isAdminRole(session.role), id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -96,7 +97,7 @@ export async function DELETE(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  if (!(await canModify(session.userId, session.role === "ADMIN", id))) {
+  if (!(await canModify(session.userId, isAdminRole(session.role), id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

@@ -2,8 +2,14 @@
 
 import { Fragment, useEffect, useState } from "react";
 import Card from "@/components/Card";
+import type { Role } from "@/lib/types";
 
-type Role = "ADMIN" | "STAFF";
+const ROLE_LABELS: Record<Role, string> = {
+  SUPER_ADMIN: "Super Admin",
+  ADMIN: "Admin",
+  STAFF: "Staff",
+};
+
 type AppUser = {
   id: string;
   name: string;
@@ -15,6 +21,7 @@ type AppUser = {
 };
 
 export default function UsersPage() {
+  const [viewerRole, setViewerRole] = useState<Role | null>(null);
   const [users, setUsers] = useState<AppUser[]>([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -39,6 +46,9 @@ export default function UsersPage() {
 
   useEffect(() => {
     load();
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((d) => setViewerRole(d.role ?? null));
   }, []);
 
   async function handleAdd(e: React.FormEvent) {
@@ -167,6 +177,7 @@ export default function UsersPage() {
           >
             <option value="STAFF">Staff</option>
             <option value="ADMIN">Admin</option>
+            {viewerRole === "SUPER_ADMIN" && <option value="SUPER_ADMIN">Super Admin</option>}
           </select>
         </div>
         <button
@@ -203,7 +214,7 @@ export default function UsersPage() {
               <tr className="border-t border-black/10 dark:border-white/10">
                 <td className="px-3 py-2">{u.name}</td>
                 <td className="px-3 py-2">{u.email}</td>
-                <td className="px-3 py-2">{u.role}</td>
+                <td className="px-3 py-2">{ROLE_LABELS[u.role]}</td>
                 <td className="px-3 py-2">
                   {!u.active ? "Deactivated" : !u.hasPassword ? "Pending setup" : "Active"}
                 </td>

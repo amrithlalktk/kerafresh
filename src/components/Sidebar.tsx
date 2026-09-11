@@ -15,6 +15,7 @@ import {
   Upload,
 } from "lucide-react";
 import type { SessionPayload } from "@/lib/auth";
+import { isAdminRole } from "@/lib/types";
 import Logo from "@/components/Logo";
 
 const LINKS = [
@@ -41,7 +42,7 @@ export default function Sidebar({ session }: { session: SessionPayload }) {
         <Logo />
       </div>
       <nav className="flex flex-1 flex-col gap-0.5 px-3">
-        {LINKS.filter((l) => !l.adminOnly || session.role === "ADMIN").map((link) => {
+        {LINKS.filter((l) => !l.adminOnly || isAdminRole(session.role)).map((link) => {
           const Icon = link.icon;
           const active = pathname.startsWith(link.href);
           return (

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import Card from "@/components/Card";
 import { formatCents } from "@/lib/money";
-import type { Category, Item, Party } from "@/lib/types";
+import { isAdminRole, type Category, type Item, type Party, type Role } from "@/lib/types";
 
 type EntityType = "SALE" | "PURCHASE" | "EXPENSE";
 
@@ -82,7 +82,7 @@ function parseNumber(value: string): number | null {
 }
 
 export default function ImportPage() {
-  const [role, setRole] = useState<string | null>(null);
+  const [role, setRole] = useState<Role | null>(null);
   const [entityType, setEntityType] = useState<EntityType>("SALE");
   const [saleRows, setSaleRows] = useState<SaleRow[]>([]);
   const [expenseRows, setExpenseRows] = useState<ExpenseRow[]>([]);
@@ -98,7 +98,7 @@ export default function ImportPage() {
   useEffect(() => {
     fetch("/api/auth/me")
       .then((res) => res.json())
-      .then((d) => setRole(d.role ?? ""));
+      .then((d) => setRole(d.role ?? null));
     fetch("/api/parties")
       .then((res) => res.json())
       .then(setParties);
@@ -324,7 +324,7 @@ export default function ImportPage() {
   }
 
   if (role === null) return null;
-  if (role !== "ADMIN") {
+  if (!isAdminRole(role)) {
     return (
       <div className="flex flex-col gap-2">
         <h1 className="text-lg font-semibold">Import</h1>

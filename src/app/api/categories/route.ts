@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { isAdminRole } from "@/lib/types";
 import { categorySchema } from "@/lib/validation";
 
 export async function GET() {
@@ -17,7 +18,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (session.role !== "ADMIN")
+  if (!isAdminRole(session.role))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await request.json();
