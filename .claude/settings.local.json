@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(export NODE_PATH=/Users/impress/Desktop/Kerafresh/node_modules)",
+      "Bash(node -e ' *)"
+    ]
+  }
+}
