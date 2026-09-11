@@ -144,16 +144,16 @@ export default function PurchasePage() {
           <table className="w-full table-fixed text-sm">
             <thead className="text-left text-black/60 dark:text-white/60">
               <tr>
-                <th className="w-20 px-4 py-3">Bill #</th>
-                <th className="w-32 px-4 py-3">Date</th>
-                <th className="w-36 px-4 py-3">Party</th>
-                <th className="px-4 py-3">Item</th>
-                <th className="w-20 px-4 py-3 text-center">Qty</th>
-                <th className="w-24 px-4 py-3">Price</th>
-                <th className="w-24 px-4 py-3 text-center">FFA</th>
-                <th className="w-20 px-4 py-3 text-center">Tax %</th>
-                <th className="w-24 px-4 py-3 text-right">Total</th>
-                <th className="w-48 px-4 py-3"></th>
+                <th className="w-16 px-2 py-3">Bill #</th>
+                <th className="w-32 px-2 py-3">Date</th>
+                <th className="w-28 px-2 py-3">Party</th>
+                <th className="px-2 py-3">Item</th>
+                <th className="w-14 px-2 py-3 text-center">Qty</th>
+                <th className="w-20 px-2 py-3">Price</th>
+                <th className="w-16 px-2 py-3 text-center">FFA</th>
+                <th className="w-14 px-2 py-3 text-center">Tax %</th>
+                <th className="w-20 px-2 py-3 text-right">Total</th>
+                <th className="w-40 px-2 py-3"></th>
               </tr>
             </thead>
             <tbody>
@@ -177,10 +177,10 @@ export default function PurchasePage() {
                 return (
                   <Fragment key={purchase.id}>
                   <tr className="border-t border-black/5 dark:border-white/5">
-                    <td className="px-4 py-3 text-black/50 whitespace-nowrap dark:text-white/50">
+                    <td className="px-2 py-3 text-black/50 whitespace-nowrap dark:text-white/50">
                       #{formatBillNumber(purchase.billNumber)}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td className="px-2 py-3 whitespace-nowrap">
                       <span className="inline-flex items-center gap-2">
                         <PaymentStatusIcon
                           date={purchase.date}
@@ -190,8 +190,8 @@ export default function PurchasePage() {
                         {formatDate(purchase.date)}
                       </span>
                     </td>
-                    <td className="px-4 py-3">{purchase.party?.name ?? "—"}</td>
-                    <td className="px-4 py-3" colSpan={5}>
+                    <td className="px-2 py-3">{purchase.party?.name ?? "—"}</td>
+                    <td className="px-2 py-3" colSpan={5}>
                       <div className="flex flex-col gap-0.5">
                         {purchase.items.map((l) => (
                           <span key={l.id}>
@@ -217,10 +217,10 @@ export default function PurchasePage() {
                         ))}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <td className="px-2 py-3 text-right whitespace-nowrap">
                       {formatCents(purchase.totalCents)}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-2 py-3 text-right">
                       <a
                         href={`/print/purchase/${purchase.id}`}
                         target="_blank"
