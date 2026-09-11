@@ -245,7 +245,7 @@ export default function QuickEntryRow({
           onChange={setItemName}
           onSelect={fillPriceForItemName}
           options={items.map((i) => i.name)}
-          placeholder="Item — type to add new"
+          placeholder="Item name"
           onBlur={() => fillPriceForItemName(itemName)}
           onKeyDown={handleKeyDown}
           className={`${cellInputClass} w-full`}

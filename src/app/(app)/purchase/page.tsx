@@ -99,7 +99,7 @@ export default function PurchasePage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-lg font-semibold">Purchase</h1>
         <SearchInput
@@ -146,13 +146,13 @@ export default function PurchasePage() {
               <tr>
                 <th className="w-16 px-2 py-3">Bill #</th>
                 <th className="w-32 px-2 py-3">Date</th>
-                <th className="w-28 px-2 py-3">Party</th>
-                <th className="px-2 py-3">Item</th>
-                <th className="w-14 px-2 py-3 text-center">Qty</th>
-                <th className="w-20 px-2 py-3">Price</th>
+                <th className="w-36 px-2 py-3">Party</th>
+                <th className="w-36 px-2 py-3">Item</th>
+                <th className="w-20 px-2 py-3 text-center">KG</th>
+                <th className="w-32 px-2 py-3">Price</th>
                 <th className="w-16 px-2 py-3 text-center">FFA</th>
-                <th className="w-14 px-2 py-3 text-center">Tax %</th>
-                <th className="w-20 px-2 py-3 text-right">Total</th>
+                <th className="w-16 px-2 py-3 text-center">Tax %</th>
+                <th className="w-36 px-2 py-3 text-right">Total</th>
                 <th className="w-40 px-2 py-3"></th>
               </tr>
             </thead>
