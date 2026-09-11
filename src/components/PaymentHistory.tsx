@@ -19,6 +19,7 @@ export default function PaymentHistory({
   totalCents,
   paidCents,
   onChange,
+  canDelete,
 }: {
   /** e.g. `/api/sales/${sale.id}` or `/api/purchases/${purchase.id}` */
   apiBase: string;
@@ -26,6 +27,7 @@ export default function PaymentHistory({
   totalCents: number;
   paidCents: number;
   onChange: () => void;
+  canDelete: boolean;
 }) {
   const [date, setDate] = useState(todayStr());
   const [amount, setAmount] = useState("");
@@ -94,14 +96,16 @@ export default function PaymentHistory({
                   </span>
                 )}
               </span>
-              <button
-                type="button"
-                onClick={() => handleDeletePayment(p)}
-                className="text-black/40 hover:text-[#d03b3b] dark:text-white/40"
-                aria-label="Remove payment"
-              >
-                <Trash2 size={14} />
-              </button>
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={() => handleDeletePayment(p)}
+                  className="text-black/40 hover:text-[#d03b3b] dark:text-white/40"
+                  aria-label="Remove payment"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
             </li>
           ))}
         </ul>

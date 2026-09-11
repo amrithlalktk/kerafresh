@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { formatCents } from "@/lib/money";
 import { formatDate } from "@/lib/date";
-import type { Category, Expense } from "@/lib/types";
+import { isAdminRole, type Category, type Expense } from "@/lib/types";
+import { useViewerRole } from "@/lib/useViewerRole";
 import Modal from "@/components/Modal";
 import Card from "@/components/Card";
 import ExpenseForm from "@/components/ExpenseForm";
@@ -13,6 +14,8 @@ import SearchInput from "@/components/SearchInput";
 export default function ExpensesPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const viewerRole = useViewerRole();
+  const canDelete = viewerRole !== null && isAdminRole(viewerRole);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -196,9 +199,14 @@ export default function ExpensesPage() {
                     <button onClick={() => openEdit(e)} className="mr-2 underline underline-offset-4">
                       Edit
                     </button>
-                    <button onClick={() => handleDelete(e)} className="text-[#d03b3b] underline underline-offset-4">
-                      Delete
-                    </button>
+                    {canDelete && (
+                      <button
+                        onClick={() => handleDelete(e)}
+                        className="text-[#d03b3b] underline underline-offset-4"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

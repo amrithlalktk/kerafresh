@@ -26,10 +26,12 @@ export default function PartyAdvancePayments({
   partyId,
   availableAdvanceCents,
   onChange,
+  canDelete,
 }: {
   partyId: string;
   availableAdvanceCents: number;
   onChange: () => void;
+  canDelete: boolean;
 }) {
   const [payments, setPayments] = useState<PartyPayment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -170,14 +172,16 @@ export default function PartyAdvancePayments({
                 >
                   <Pencil size={14} />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(p)}
-                  className="text-black/40 hover:text-[#d03b3b] dark:text-white/40"
-                  aria-label="Remove advance payment"
-                >
-                  <Trash2 size={14} />
-                </button>
+                {canDelete && (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(p)}
+                    className="text-black/40 hover:text-[#d03b3b] dark:text-white/40"
+                    aria-label="Remove advance payment"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </span>
             </li>
           ))}

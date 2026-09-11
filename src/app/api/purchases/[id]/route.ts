@@ -97,11 +97,13 @@ export async function DELETE(
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { id } = await params;
-  if (!(await canModify(session.userId, isAdminRole(session.role), id))) {
+  // Deleting is admin/super-admin only — unlike editing, staff can't delete
+  // even their own entries.
+  if (!isAdminRole(session.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+
+  const { id } = await params;
 
   await db.purchase.delete({ where: { id } });
   return NextResponse.json({ ok: true });

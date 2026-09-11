@@ -4,7 +4,8 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { formatBillNumber, formatCents } from "@/lib/money";
 import { formatDate } from "@/lib/date";
-import type { ChargeType, Item, Party, Sale } from "@/lib/types";
+import { isAdminRole, type ChargeType, type Item, type Party, type Sale } from "@/lib/types";
+import { useViewerRole } from "@/lib/useViewerRole";
 import Card from "@/components/Card";
 import SalePurchaseForm from "@/components/SalePurchaseForm";
 import QuickEntryRow from "@/components/QuickEntryRow";
@@ -15,6 +16,8 @@ import SearchInput from "@/components/SearchInput";
 export default function SalePage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const viewerRole = useViewerRole();
+  const canDelete = viewerRole !== null && isAdminRole(viewerRole);
   const formRef = useRef<HTMLDivElement>(null);
 
   const [parties, setParties] = useState<Party[]>([]);
@@ -243,9 +246,14 @@ export default function SalePage() {
                       <button onClick={() => openEdit(sale)} className="mr-2 underline underline-offset-4">
                         Edit
                       </button>
-                      <button onClick={() => handleDelete(sale)} className="text-[#d03b3b] underline underline-offset-4">
-                        Delete
-                      </button>
+                      {canDelete && (
+                        <button
+                          onClick={() => handleDelete(sale)}
+                          className="text-[#d03b3b] underline underline-offset-4"
+                        >
+                          Delete
+                        </button>
+                      )}
                     </td>
                   </tr>
                   {expandedId === sale.id && (
@@ -257,6 +265,7 @@ export default function SalePage() {
                           totalCents={sale.totalCents}
                           paidCents={sale.paidCents}
                           onChange={loadSales}
+                          canDelete={canDelete}
                         />
                       </td>
                     </tr>

@@ -3,23 +3,17 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { isAdminRole } from "@/lib/types";
 
-async function canModify(userId: string, isAdmin: boolean, saleId: string) {
-  if (isAdmin) return true;
-  const sale = await db.sale.findUnique({ where: { id: saleId }, select: { userId: true } });
-  return sale?.userId === userId;
-}
-
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string; paymentId: string }> }
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { id, paymentId } = await params;
-  if (!(await canModify(session.userId, isAdminRole(session.role), id))) {
+  if (!isAdminRole(session.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+
+  const { id, paymentId } = await params;
 
   const sale = await db.$transaction(async (tx) => {
     await tx.salePayment.delete({ where: { id: paymentId } });

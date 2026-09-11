@@ -10,6 +10,7 @@ const patchSchema = z.object({
   active: z.boolean().optional(),
   password: z.string().min(8, "Password must be at least 8 characters").optional(),
   resendInvite: z.literal(true).optional(),
+  role: z.enum(["SUPER_ADMIN", "ADMIN", "STAFF"]).optional(),
 });
 
 export async function PATCH(
@@ -42,7 +43,8 @@ export async function PATCH(
   if (
     parsed.data.active === undefined &&
     parsed.data.password === undefined &&
-    parsed.data.resendInvite === undefined
+    parsed.data.resendInvite === undefined &&
+    parsed.data.role === undefined
   ) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }
@@ -74,16 +76,34 @@ export async function PATCH(
     );
   }
 
-  if (parsed.data.active === false && isAdminRole(target.role)) {
-    // Super Admin counts alongside Admin here — either one can manage
-    // Users/Categories, so the system needs at least one of either kind
-    // active, not specifically one literally named "ADMIN".
+  if (id === session.userId && parsed.data.role !== undefined) {
+    return NextResponse.json({ error: "You can't change your own role" }, { status: 400 });
+  }
+
+  // Only a Super Admin can promote someone to Super Admin — an Admin
+  // granting that role would create a peer account it can't even see
+  // afterward. (Demoting *from* Super Admin can't reach here: the target
+  // lookup above already 404s a Super Admin target for a non-Super-Admin
+  // session.)
+  if (parsed.data.role === "SUPER_ADMIN" && session.role !== "SUPER_ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Either removing admin-capability (deactivating, or demoting to Staff)
+  // needs the same safeguard: the system always needs at least one active
+  // Admin-or-Super-Admin left to manage Users/Categories.
+  const losingPrivilege =
+    isAdminRole(target.role) &&
+    target.active &&
+    ((parsed.data.active === false) ||
+      (parsed.data.role !== undefined && !isAdminRole(parsed.data.role)));
+  if (losingPrivilege) {
     const activePrivileged = await db.user.count({
       where: { role: { in: ["ADMIN", "SUPER_ADMIN"] }, active: true },
     });
     if (activePrivileged <= 1) {
       return NextResponse.json(
-        { error: "Can't deactivate the last active admin" },
+        { error: "Can't remove the last active admin" },
         { status: 400 }
       );
     }
@@ -94,6 +114,7 @@ export async function PATCH(
     data: {
       ...(parsed.data.active !== undefined ? { active: parsed.data.active } : {}),
       ...(parsed.data.password ? { passwordHash: await hashPassword(parsed.data.password) } : {}),
+      ...(parsed.data.role !== undefined ? { role: parsed.data.role } : {}),
     },
     select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
   });

@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { formatCents } from "@/lib/money";
-import type { Item } from "@/lib/types";
+import { isAdminRole, type Item } from "@/lib/types";
+import { useViewerRole } from "@/lib/useViewerRole";
 import Modal from "@/components/Modal";
 import Card from "@/components/Card";
 import ItemForm from "@/components/ItemForm";
@@ -12,6 +13,8 @@ import SearchInput from "@/components/SearchInput";
 export default function ItemsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const viewerRole = useViewerRole();
+  const canDelete = viewerRole !== null && isAdminRole(viewerRole);
 
   const [items, setItems] = useState<Item[]>([]);
   const [search, setSearch] = useState("");
@@ -108,9 +111,14 @@ export default function ItemsPage() {
                       <button onClick={() => openEdit(item)} className="mr-2 underline underline-offset-4">
                         Edit
                       </button>
-                      <button onClick={() => handleDelete(item)} className="text-[#d03b3b] underline underline-offset-4">
-                        Delete
-                      </button>
+                      {canDelete && (
+                        <button
+                          onClick={() => handleDelete(item)}
+                          className="text-[#d03b3b] underline underline-offset-4"
+                        >
+                          Delete
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );

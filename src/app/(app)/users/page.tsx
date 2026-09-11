@@ -22,6 +22,8 @@ type AppUser = {
 
 export default function UsersPage() {
   const [viewerRole, setViewerRole] = useState<Role | null>(null);
+  const [viewerId, setViewerId] = useState<string | null>(null);
+  const [roleChangingId, setRoleChangingId] = useState<string | null>(null);
   const [users, setUsers] = useState<AppUser[]>([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -48,7 +50,10 @@ export default function UsersPage() {
     load();
     fetch("/api/auth/me")
       .then((res) => res.json())
-      .then((d) => setViewerRole(d.role ?? null));
+      .then((d) => {
+        setViewerRole(d.role ?? null);
+        setViewerId(d.userId ?? null);
+      });
   }, []);
 
   async function handleAdd(e: React.FormEvent) {
@@ -97,6 +102,26 @@ export default function UsersPage() {
       setResendDoneFor(u.id);
     } finally {
       setResendingId(null);
+    }
+  }
+
+  async function handleRoleChange(u: AppUser, newRole: Role) {
+    if (newRole === u.role) return;
+    setRoleChangingId(u.id);
+    try {
+      const res = await fetch(`/api/users/${u.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: newRole }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error ?? "Could not change role");
+        return;
+      }
+      load();
+    } finally {
+      setRoleChangingId(null);
     }
   }
 
@@ -214,7 +239,24 @@ export default function UsersPage() {
               <tr className="border-t border-black/10 dark:border-white/10">
                 <td className="px-3 py-2">{u.name}</td>
                 <td className="px-3 py-2">{u.email}</td>
-                <td className="px-3 py-2">{ROLE_LABELS[u.role]}</td>
+                <td className="px-3 py-2">
+                  {u.id === viewerId ? (
+                    ROLE_LABELS[u.role]
+                  ) : (
+                    <select
+                      value={u.role}
+                      disabled={roleChangingId === u.id}
+                      onChange={(e) => handleRoleChange(u, e.target.value as Role)}
+                      className="rounded-md border border-black/15 px-1.5 py-1 text-sm disabled:opacity-50 dark:border-white/15 dark:bg-transparent"
+                    >
+                      <option value="STAFF">Staff</option>
+                      <option value="ADMIN">Admin</option>
+                      {viewerRole === "SUPER_ADMIN" && (
+                        <option value="SUPER_ADMIN">Super Admin</option>
+                      )}
+                    </select>
+                  )}
+                </td>
                 <td className="px-3 py-2">
                   {!u.active ? "Deactivated" : !u.hasPassword ? "Pending setup" : "Active"}
                 </td>
