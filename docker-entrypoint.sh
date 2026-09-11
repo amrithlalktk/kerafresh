@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-npx prisma db push --skip-generate
+npx prisma migrate deploy
 
 CATEGORY_COUNT=$(node -e "
 const { PrismaClient } = require('@prisma/client');

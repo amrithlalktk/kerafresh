@@ -3,6 +3,8 @@ FROM node:20-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat openssl
 COPY package.json package-lock.json ./
+# postinstall (`prisma generate`) needs the schema present before `npm ci`.
+COPY prisma ./prisma
 RUN npm ci
 
 # --- builder: generate Prisma client + build Next.js -------------------------
@@ -11,8 +13,10 @@ WORKDIR /app
 RUN apk add --no-cache openssl
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# Dummy DB URL — only needed for `prisma generate`, not for the build itself.
-ENV DATABASE_URL="file:./build.db"
+# Dummy DB URL — only needed for `prisma generate` to parse the schema's
+# datasource block, not for real connectivity at build time.
+ENV DATABASE_URL="postgresql://user:pass@localhost:5432/db"
+ENV DIRECT_URL="postgresql://user:pass@localhost:5432/db"
 # NEXT_PUBLIC_* vars are baked into the client bundle at build time, so this
 # must be set here — setting it only at `docker run` time is too late.
 ARG NEXT_PUBLIC_CURRENCY=INR
@@ -36,14 +40,13 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json ./package.json
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
-RUN chmod +x ./docker-entrypoint.sh \
-  && mkdir -p /app/data \
-  && chown -R nextjs:nodejs /app/data
+RUN chmod +x ./docker-entrypoint.sh
 
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
-ENV DATABASE_URL="file:/app/data/dev.db"
+# DATABASE_URL/DIRECT_URL come from docker-compose.yml at runtime, pointing
+# at the `db` Postgres service.
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["npm", "start"]

@@ -1,14 +1,21 @@
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+  // rhel-openssl-3.0.x: Vercel's Node.js serverless runtime.
+  // linux-musl-openssl-3.0.x: the Alpine-based Docker image.
+  // native: local dev.
+  binaryTargets = ["native", "rhel-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
-  // SQLite for zero-config local dev. To deploy to a hosted Postgres
-  // database, change provider to "postgresql" and set DATABASE_URL
-  // to the Postgres connection string — no other code changes needed.
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider = "postgresql"
+  // Pooled connection string (e.g. Neon's `-pooler` host, or PgBouncer) —
+  // used for normal runtime queries from many concurrent serverless
+  // functions.
+  url       = env("DATABASE_URL")
+  // Unpooled/direct connection string — `prisma migrate deploy` needs
+  // this because poolers like PgBouncer don't support the advisory locks
+  // migrations take.
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
