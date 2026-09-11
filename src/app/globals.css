@@ -10,6 +10,11 @@
 :root {
   --background: #fdfcfa;
   --foreground: #171717;
+  /* The app forces light theme above, but without this the browser still
+     renders native form controls (a <select>'s dropdown list, date pickers)
+     using the OS's own dark/light preference — causing a black dropdown
+     popup on a dark-mode OS even though the page itself is light. */
+  color-scheme: light;
 }
 
 @theme inline {
@@ -23,4 +28,15 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* The glass effect (translucent + backdrop-blur) is a screen-only look —
+   printed pages should be plain white with solid borders instead, both for
+   ink and because backdrop-filter doesn't render consistently across
+   print engines. Card/SummaryCard/Modal opt into this via `print:` classes;
+   this covers anything print:hidden doesn't already remove. */
+@media print {
+  body {
+    background: #fff;
+  }
 }

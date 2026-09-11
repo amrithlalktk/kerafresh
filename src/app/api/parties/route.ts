@@ -3,21 +3,23 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { partySchema } from "@/lib/validation";
 import { toCents } from "@/lib/money";
-import { getPartyBalanceMap } from "@/lib/balances";
+import { getAvailableAdvanceForSalesMap, getPartyBalanceMap } from "@/lib/balances";
 
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const [parties, dueByParty] = await Promise.all([
+  const [parties, dueByParty, availableAdvanceByParty] = await Promise.all([
     db.party.findMany({ orderBy: { name: "asc" } }),
     getPartyBalanceMap(),
+    getAvailableAdvanceForSalesMap(),
   ]);
 
   return NextResponse.json(
     parties.map((p) => ({
       ...p,
       balanceCents: p.openingBalanceCents + (dueByParty.get(p.id) ?? 0),
+      availableAdvanceCents: availableAdvanceByParty.get(p.id) ?? 0,
     }))
   );
 }
@@ -49,5 +51,9 @@ export async function POST(request: Request) {
     },
   });
 
-  return NextResponse.json({ ...party, balanceCents: party.openingBalanceCents });
+  return NextResponse.json({
+    ...party,
+    balanceCents: party.openingBalanceCents,
+    availableAdvanceCents: 0,
+  });
 }

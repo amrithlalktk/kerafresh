@@ -12,6 +12,7 @@ import {
   BarChart2,
   Tags,
   UserCog,
+  Upload,
 } from "lucide-react";
 import type { SessionPayload } from "@/lib/auth";
 import Logo from "@/components/Logo";
@@ -24,6 +25,7 @@ const LINKS = [
   { href: "/purchase", label: "Purchase", icon: Truck, adminOnly: false },
   { href: "/expenses", label: "Expenses", icon: Receipt, adminOnly: false },
   { href: "/reports", label: "Reports", icon: BarChart2, adminOnly: false },
+  { href: "/import", label: "Import", icon: Upload, adminOnly: true },
   { href: "/categories", label: "Categories", icon: Tags, adminOnly: true },
   { href: "/users", label: "Users", icon: UserCog, adminOnly: true },
 ];
@@ -33,7 +35,7 @@ export default function Sidebar({ session }: { session: SessionPayload }) {
 
   return (
     <aside
-      className="fixed inset-y-0 left-0 z-20 flex h-screen w-56 shrink-0 flex-col border-r border-black/10 bg-[#f2f0eb]/70 text-black/70 shadow-[8px_0_30px_rgba(0,0,0,0.06)] backdrop-blur-xl"
+      className="fixed inset-y-0 left-0 z-20 flex h-screen w-56 shrink-0 flex-col border-r border-black/10 bg-[#f2f0eb]/70 text-black/70 shadow-[8px_0_30px_rgba(0,0,0,0.06)] backdrop-blur-xl print:hidden"
     >
       <div className="px-5 py-5">
         <Logo />
@@ -48,7 +50,7 @@ export default function Sidebar({ session }: { session: SessionPayload }) {
               href={link.href}
               className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm backdrop-blur-sm transition-colors ${
                 active
-                  ? "bg-[#e34948]/85 font-medium text-white"
+                  ? "bg-[#1baf7a]/85 font-medium text-white"
                   : "hover:bg-black/5 hover:text-black"
               }`}
             >

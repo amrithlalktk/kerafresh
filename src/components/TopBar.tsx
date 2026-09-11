@@ -15,7 +15,7 @@ export default function TopBar() {
   }
 
   return (
-    <header className="flex items-center justify-between border-b border-black/5 bg-[#fdfcfa] px-6 py-3 dark:border-white/5 dark:bg-[#161927]">
+    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-white/40 bg-white/50 px-6 py-3 backdrop-blur-xl print:hidden dark:border-white/5 dark:bg-[#161927]/60">
       <div className="flex max-w-xs flex-1 items-center gap-2 rounded-lg border border-black/10 px-3 py-2 text-sm text-black/40 dark:border-white/10 dark:text-white/40">
         <Search size={16} />
         <span>Search</span>
@@ -24,7 +24,7 @@ export default function TopBar() {
       <div className="flex items-center gap-2">
         <button
           onClick={() => router.push("/sale?new=1")}
-          className="flex items-center gap-1.5 rounded-full bg-[#e34948] px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          className="flex items-center gap-1.5 rounded-full bg-[#1baf7a] px-4 py-2 text-sm font-medium text-white hover:opacity-90"
         >
           <Plus size={16} /> Add Sale
         </button>
@@ -43,7 +43,7 @@ export default function TopBar() {
             <Plus size={16} /> Add More <ChevronDown size={14} />
           </button>
           {moreOpen && (
-            <div className="absolute right-0 z-10 mt-1 w-40 rounded-lg border border-black/10 bg-[#fdfcfa] py-1 text-sm shadow-lg dark:border-white/10 dark:bg-[#1e2231]">
+            <div className="absolute right-0 z-10 mt-1 w-40 rounded-lg border border-white/50 bg-white/80 py-1 text-sm shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-[#1e2231]/80">
               {[
                 { label: "Expense", href: "/expenses?new=1" },
                 { label: "Item", href: "/items?new=1" },

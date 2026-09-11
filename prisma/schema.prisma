@@ -42,6 +42,16 @@ enum PaymentMethod {
   BANK
 }
 
+enum PartyPaymentDirection {
+  RECEIVED // an advance received from the party (e.g. a customer prepaying)
+  PAID // an advance paid to the party (e.g. prepaying a supplier)
+}
+
+enum PaymentSource {
+  CASH // fresh money changing hands right now
+  ADVANCE // settled against a party's existing advance credit — see PartyPayment
+}
+
 model User {
   id           String        @id @default(cuid())
   name         String
@@ -50,9 +60,28 @@ model User {
   role         Role          @default(STAFF)
   active       Boolean       @default(true)
   createdAt    DateTime      @default(now())
-  transactions Transaction[]
-  sales        Sale[]
-  purchases    Purchase[]
+  transactions        Transaction[]
+  sales               Sale[]
+  purchases           Purchase[]
+  advancePayments     PartyPayment[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+// A one-time link emailed to a user who forgot their password. `tokenHash`
+// is a fast SHA-256 hash (not bcrypt) of the raw token that's actually in
+// the emailed URL — that raw token never touches the database, and a fast
+// hash is fine here since the token itself is high-entropy random, unlike a
+// user-chosen password that needs slow hashing to resist guessing.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([expiresAt])
 }
 
 model Category {
@@ -96,6 +125,27 @@ model Party {
   createdAt           DateTime   @default(now())
   sales               Sale[]
   purchases           Purchase[]
+  advancePayments     PartyPayment[]
+}
+
+// Money exchanged with a party outside of any specific Sale/Purchase — most
+// commonly an advance a customer pays before an order, or an advance paid to
+// a supplier before delivery. Included in the party's running balance
+// alongside unpaid Sale/Purchase amounts (see getPartyBalanceMap).
+model PartyPayment {
+  id            String                @id @default(cuid())
+  party         Party                 @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  partyId       String
+  date          DateTime
+  direction     PartyPaymentDirection
+  amountCents   Int
+  paymentMethod PaymentMethod         @default(CASH)
+  notes         String?
+  recordedBy    User                  @relation(fields: [userId], references: [id])
+  userId        String
+  createdAt     DateTime              @default(now())
+
+  @@index([date])
 }
 
 model Item {
@@ -106,6 +156,9 @@ model Item {
   purchasePriceCents Int
   openingStockQty    Int            @default(0)
   lowStockThreshold  Int?
+  // When true, a Sale/Purchase line for this item asks for an FFA grade
+  // (FFA-1..FFA-10) — a quality rating, not every item needs one.
+  ffaGraded          Boolean        @default(false)
   createdAt          DateTime       @default(now())
   saleItems          SaleItem[]
   purchaseItems      PurchaseItem[]
@@ -126,6 +179,9 @@ model ChargeType {
 
 model Sale {
   id            String         @id @default(cuid())
+  // Sequential invoice number for this sale, assigned by the API as
+  // (current max + 1) — its own series, separate from Purchase's.
+  billNumber    Int            @unique @default(0)
   date          DateTime
   party         Party?         @relation(fields: [partyId], references: [id])
   partyId       String?
@@ -155,6 +211,11 @@ model SalePayment {
   date          DateTime
   amountCents   Int
   paymentMethod PaymentMethod @default(CASH)
+  // ADVANCE means this amount was already accounted for as a PartyPayment
+  // (RECEIVED) earlier — see getPartyBalanceMap, which nets ADVANCE-sourced
+  // sale payments back out of the party's advance pool so it isn't counted
+  // as both "still available" and "used to pay this bill".
+  source        PaymentSource @default(CASH)
   notes         String?
   createdAt     DateTime      @default(now())
 
@@ -162,14 +223,22 @@ model SalePayment {
 }
 
 model SaleItem {
-  id             String @id @default(cuid())
-  sale           Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  saleId         String
-  item           Item   @relation(fields: [itemId], references: [id])
-  itemId         String
-  quantity       Int
-  priceCents     Int
+  id         String @id @default(cuid())
+  sale       Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  saleId     String
+  item       Item   @relation(fields: [itemId], references: [id])
+  itemId     String
+  quantity   Int
+  priceCents Int
+  // Pre-tax: quantity * priceCents.
   lineTotalCents Int
+  // GST-style rate for this line (e.g. 18 for 18%) — 0 for no tax.
+  taxPercent Float @default(0)
+  // round(lineTotalCents * taxPercent / 100), stored so historical bills
+  // don't recompute differently if the item's price changes later.
+  taxCents   Int     @default(0)
+  // FFA grade (e.g. "FFA-3") — only set when the item is ffaGraded.
+  ffaGrade   String?
 }
 
 model SaleCharge {
@@ -184,6 +253,9 @@ model SaleCharge {
 
 model Purchase {
   id            String            @id @default(cuid())
+  // Sequential bill number for this purchase — own series, separate from
+  // Sale's (see Sale.billNumber).
+  billNumber    Int               @unique @default(0)
   date          DateTime
   party         Party?            @relation(fields: [partyId], references: [id])
   partyId       String?
@@ -217,14 +289,21 @@ model PurchasePayment {
 }
 
 model PurchaseItem {
-  id             String   @id @default(cuid())
-  purchase       Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  purchaseId     String
-  item           Item     @relation(fields: [itemId], references: [id])
-  itemId         String
-  quantity       Int
-  priceCents     Int
+  id         String   @id @default(cuid())
+  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  purchaseId String
+  item       Item     @relation(fields: [itemId], references: [id])
+  itemId     String
+  quantity   Int
+  priceCents Int
+  // Pre-tax: quantity * priceCents.
   lineTotalCents Int
+  // GST-style rate for this line (e.g. 18 for 18%) — 0 for no tax.
+  taxPercent Float   @default(0)
+  // round(lineTotalCents * taxPercent / 100) — see SaleItem.taxCents.
+  taxCents   Int     @default(0)
+  // FFA grade (e.g. "FFA-3") — only set when the item is ffaGraded.
+  ffaGrade   String?
 }
 
 model PurchaseCharge {

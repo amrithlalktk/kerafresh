@@ -3,19 +3,53 @@ import { db } from "@/lib/db";
 // Party/item balances are always computed at read time from Sale/Purchase
 // rows rather than stored, so they can never drift out of sync.
 
+// SalePayments settled against a party's existing advance credit (source:
+// "ADVANCE") rather than fresh cash — see PartyPayment and SalePayment.source.
+// Grouped by party via the parent Sale, since SalePayment has no partyId of
+// its own.
+async function getAdvanceSourcedOnSalesMap() {
+  const rows = await db.salePayment.findMany({
+    where: { source: "ADVANCE" },
+    select: { amountCents: true, sale: { select: { partyId: true } } },
+  });
+  const map = new Map<string, number>();
+  for (const row of rows) {
+    const partyId = row.sale.partyId;
+    if (!partyId) continue;
+    map.set(partyId, (map.get(partyId) ?? 0) + row.amountCents);
+  }
+  return map;
+}
+
 export async function getPartyBalanceMap() {
-  const [saleTotals, purchaseTotals] = await Promise.all([
-    db.sale.groupBy({
-      by: ["partyId"],
-      where: { partyId: { not: null } },
-      _sum: { totalCents: true, paidCents: true },
-    }),
-    db.purchase.groupBy({
-      by: ["partyId"],
-      where: { partyId: { not: null } },
-      _sum: { totalCents: true, paidCents: true },
-    }),
-  ]);
+  const [saleTotals, purchaseTotals, receivedTotals, paidTotals, advanceSourcedOnSales] =
+    await Promise.all([
+      db.sale.groupBy({
+        by: ["partyId"],
+        where: { partyId: { not: null } },
+        _sum: { totalCents: true, paidCents: true },
+      }),
+      db.purchase.groupBy({
+        by: ["partyId"],
+        where: { partyId: { not: null } },
+        _sum: { totalCents: true, paidCents: true },
+      }),
+      // Advance payments outside of any Sale/Purchase (see PartyPayment) feed
+      // into the same balance: receiving money from a party reduces what they
+      // owe us, paying them money increases it (mirrors how Sale/Purchase
+      // paidCents moves the balance below).
+      db.partyPayment.groupBy({
+        by: ["partyId"],
+        where: { direction: "RECEIVED" },
+        _sum: { amountCents: true },
+      }),
+      db.partyPayment.groupBy({
+        by: ["partyId"],
+        where: { direction: "PAID" },
+        _sum: { amountCents: true },
+      }),
+      getAdvanceSourcedOnSalesMap(),
+    ]);
 
   const dueByParty = new Map<string, number>();
   for (const row of saleTotals) {
@@ -28,7 +62,60 @@ export async function getPartyBalanceMap() {
     const due = (row._sum.totalCents ?? 0) - (row._sum.paidCents ?? 0);
     dueByParty.set(row.partyId, (dueByParty.get(row.partyId) ?? 0) - due);
   }
+  for (const row of receivedTotals) {
+    dueByParty.set(
+      row.partyId,
+      (dueByParty.get(row.partyId) ?? 0) - (row._sum.amountCents ?? 0)
+    );
+  }
+  for (const row of paidTotals) {
+    dueByParty.set(
+      row.partyId,
+      (dueByParty.get(row.partyId) ?? 0) + (row._sum.amountCents ?? 0)
+    );
+  }
+  // A Sale's paidCents already includes any ADVANCE-sourced payments (so the
+  // bill itself shows as paid), which independently nudges the line above
+  // toward positive. Add the same amount back here to cancel that out —
+  // otherwise the advance would count as both "still available" and "used".
+  for (const [partyId, amount] of advanceSourcedOnSales) {
+    dueByParty.set(partyId, (dueByParty.get(partyId) ?? 0) + amount);
+  }
   return dueByParty;
+}
+
+// How much of a party's RECEIVED advance is still unapplied — i.e. hasn't
+// already been used to settle a Sale (see SalePayment.source) or paid back
+// out. Used to offer "apply advance to this bill" when recording a new sale.
+export async function getAvailableAdvanceForSalesMap() {
+  const [receivedTotals, paidTotals, advanceSourcedOnSales] = await Promise.all([
+    db.partyPayment.groupBy({
+      by: ["partyId"],
+      where: { direction: "RECEIVED" },
+      _sum: { amountCents: true },
+    }),
+    db.partyPayment.groupBy({
+      by: ["partyId"],
+      where: { direction: "PAID" },
+      _sum: { amountCents: true },
+    }),
+    getAdvanceSourcedOnSalesMap(),
+  ]);
+
+  const map = new Map<string, number>();
+  for (const row of receivedTotals) {
+    map.set(row.partyId, (map.get(row.partyId) ?? 0) + (row._sum.amountCents ?? 0));
+  }
+  for (const row of paidTotals) {
+    map.set(row.partyId, (map.get(row.partyId) ?? 0) - (row._sum.amountCents ?? 0));
+  }
+  for (const [partyId, amount] of advanceSourcedOnSales) {
+    map.set(partyId, (map.get(partyId) ?? 0) - amount);
+  }
+  for (const [partyId, amount] of map) {
+    map.set(partyId, Math.max(0, amount));
+  }
+  return map;
 }
 
 // Earliest unpaid Sale/Purchase date per party — used to flag a

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { formatCents } from "@/lib/money";
-import type { ChargeType, Item, Party, PaymentMethod, Purchase, Sale } from "@/lib/types";
+import { FFA_GRADES, type ChargeType, type Item, type Party, type PaymentMethod, type Purchase, type Sale } from "@/lib/types";
 
 const inputClass =
   "rounded-md border border-black/15 px-3 py-2 text-sm dark:border-white/15 dark:bg-transparent";
@@ -12,11 +12,17 @@ const OTHER_CHARGE = "__other__";
 
 type Mode = "SALE" | "PURCHASE";
 
-type Line = { itemId: string; quantity: string; price: string };
+type Line = {
+  itemId: string;
+  quantity: string;
+  price: string;
+  taxPercent: string;
+  ffaGrade: string;
+};
 type ChargeLineInput = { chargeTypeId: string; label: string; amount: string };
 
 function emptyLine(): Line {
-  return { itemId: "", quantity: "1", price: "" };
+  return { itemId: "", quantity: "1", price: "", taxPercent: "0", ffaGrade: "" };
 }
 
 function emptyCharge(): ChargeLineInput {
@@ -57,6 +63,8 @@ export default function SalePurchaseForm({
           itemId: l.itemId,
           quantity: String(l.quantity),
           price: (l.priceCents / 100).toString(),
+          taxPercent: String(l.taxPercent),
+          ffaGrade: l.ffaGrade ?? "",
         }))
       : [emptyLine()]
   );
@@ -78,7 +86,9 @@ export default function SalePurchaseForm({
   const itemsTotalCents = lines.reduce((sum, l) => {
     const qty = Number(l.quantity) || 0;
     const price = Number(l.price) || 0;
-    return sum + Math.round(qty * price * 100);
+    const preTaxCents = Math.round(qty * price * 100);
+    const taxCents = Math.round((preTaxCents * (Number(l.taxPercent) || 0)) / 100);
+    return sum + preTaxCents + taxCents;
   }, 0);
   const chargesTotalCents = charges.reduce(
     (sum, c) => sum + Math.round((Number(c.amount) || 0) * 100),
@@ -105,7 +115,7 @@ export default function SalePurchaseForm({
     const price = item
       ? ((mode === "SALE" ? item.salePriceCents : item.purchasePriceCents) / 100).toString()
       : "";
-    updateLine(index, { itemId, price });
+    updateLine(index, { itemId, price, ffaGrade: "" });
   }
 
   function addLine() {
@@ -138,6 +148,14 @@ export default function SalePurchaseForm({
       setError("Add at least one item");
       return;
     }
+    const missingFfa = validLines.find((l) => {
+      const item = items.find((i) => i.id === l.itemId);
+      return item?.ffaGraded && !l.ffaGrade;
+    });
+    if (missingFfa) {
+      setError("Select an FFA grade for every item that requires one");
+      return;
+    }
     const validCharges = charges.filter((c) => c.label.trim() && Number(c.amount) > 0);
 
     setSubmitting(true);
@@ -152,6 +170,8 @@ export default function SalePurchaseForm({
             itemId: l.itemId,
             quantity: Number(l.quantity),
             price: Number(l.price) || 0,
+            taxPercent: Number(l.taxPercent) || 0,
+            ffaGrade: l.ffaGrade || null,
           })),
           charges: validCharges.map((c) => ({
             chargeTypeId: c.chargeTypeId === OTHER_CHARGE ? null : c.chargeTypeId || null,
@@ -216,6 +236,12 @@ export default function SalePurchaseForm({
               <th className="w-24 border border-black/10 px-2 py-1.5 text-left font-medium dark:border-white/10">
                 Price
               </th>
+              <th className="w-24 border border-black/10 px-2 py-1.5 text-left font-medium dark:border-white/10">
+                FFA
+              </th>
+              <th className="w-16 border border-black/10 px-2 py-1.5 text-left font-medium dark:border-white/10">
+                Tax %
+              </th>
               <th className="w-28 border border-black/10 px-2 py-1.5 text-right font-medium dark:border-white/10">
                 Amount
               </th>
@@ -224,9 +250,12 @@ export default function SalePurchaseForm({
           </thead>
           <tbody>
             {lines.map((line, index) => {
-              const lineTotalCents = Math.round(
+              const preTaxCents = Math.round(
                 (Number(line.quantity) || 0) * (Number(line.price) || 0) * 100
               );
+              const lineTotalCents =
+                preTaxCents + Math.round((preTaxCents * (Number(line.taxPercent) || 0)) / 100);
+              const selectedItem = items.find((i) => i.id === line.itemId);
               return (
                 <tr key={index}>
                   <td className="border border-black/10 p-0 dark:border-white/10">
@@ -253,7 +282,7 @@ export default function SalePurchaseForm({
                       placeholder="Qty"
                       value={line.quantity}
                       onChange={(e) => updateLine(index, { quantity: e.target.value })}
-                      className="w-full border-0 bg-transparent px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-inset focus:ring-black/20 dark:focus:ring-white/30"
+                      className="w-[4.5rem] border-0 bg-transparent px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-inset focus:ring-black/20 dark:focus:ring-white/30"
                     />
                   </td>
                   <td className="border border-black/10 p-0 dark:border-white/10">
@@ -265,6 +294,39 @@ export default function SalePurchaseForm({
                       placeholder="Price"
                       value={line.price}
                       onChange={(e) => updateLine(index, { price: e.target.value })}
+                      className="w-full border-0 bg-transparent px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-inset focus:ring-black/20 dark:focus:ring-white/30"
+                    />
+                  </td>
+                  <td className="border border-black/10 p-0 dark:border-white/10">
+                    {selectedItem?.ffaGraded ? (
+                      <select
+                        required
+                        value={line.ffaGrade}
+                        onChange={(e) => updateLine(index, { ffaGrade: e.target.value })}
+                        className="w-full border-0 bg-transparent px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-inset focus:ring-black/20 dark:focus:ring-white/30"
+                      >
+                        <option value="">Select grade</option>
+                        {FFA_GRADES.map((grade) => (
+                          <option key={grade} value={grade}>
+                            {grade}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="block px-2 py-2 text-center text-black/25 dark:text-white/25">
+                        —
+                      </span>
+                    )}
+                  </td>
+                  <td className="border border-black/10 p-0 dark:border-white/10">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      placeholder="0"
+                      value={line.taxPercent}
+                      onChange={(e) => updateLine(index, { taxPercent: e.target.value })}
                       className="w-full border-0 bg-transparent px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-inset focus:ring-black/20 dark:focus:ring-white/30"
                     />
                   </td>
@@ -371,7 +433,7 @@ export default function SalePurchaseForm({
         onClick={addCharge}
         className="self-start text-sm underline underline-offset-4"
       >
-        + Add charge (lorry rent, packing, coolie…)
+        + Add charge (freight, packing, handling…)
       </button>
 
       <div className="flex items-center justify-between border-t border-black/10 pt-2 text-sm font-medium dark:border-white/10">
@@ -433,15 +495,13 @@ export default function SalePurchaseForm({
               ? "Save changes"
               : `Add ${mode === "SALE" ? "sale" : "purchase"}`}
         </button>
-        {initial && (
-          <button
-            type="button"
-            onClick={onCancelEdit}
-            className="rounded-md border border-black/15 px-3 py-2 text-sm dark:border-white/15"
-          >
-            Cancel edit
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onCancelEdit}
+          className="rounded-md border border-black/15 px-3 py-2 text-sm dark:border-white/15"
+        >
+          {initial ? "Cancel edit" : "Close"}
+        </button>
       </div>
     </form>
   );

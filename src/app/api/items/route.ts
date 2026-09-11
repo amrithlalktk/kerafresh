@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { name, unit, salePrice, purchasePrice, openingStockQty, lowStockThreshold } =
+  const { name, unit, salePrice, purchasePrice, openingStockQty, lowStockThreshold, ffaGraded } =
     parsed.data;
 
   const item = await db.item.create({
@@ -46,6 +46,7 @@ export async function POST(request: Request) {
       purchasePriceCents: toCents(purchasePrice),
       openingStockQty,
       lowStockThreshold: lowStockThreshold ?? null,
+      ffaGraded,
     },
   });
 

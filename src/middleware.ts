@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
 
-const PUBLIC_PATHS = ["/login"];
+const PUBLIC_PATHS = ["/login", "/reset-password"];
 const ADMIN_ONLY_PREFIXES = ["/categories", "/users"];
 
 export async function middleware(request: NextRequest) {

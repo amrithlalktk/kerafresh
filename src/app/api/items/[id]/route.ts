@@ -22,7 +22,7 @@ export async function PATCH(
     );
   }
 
-  const { name, unit, salePrice, purchasePrice, openingStockQty, lowStockThreshold } =
+  const { name, unit, salePrice, purchasePrice, openingStockQty, lowStockThreshold, ffaGraded } =
     parsed.data;
 
   const item = await db.item.update({
@@ -34,6 +34,7 @@ export async function PATCH(
       purchasePriceCents: toCents(purchasePrice),
       openingStockQty,
       lowStockThreshold: lowStockThreshold ?? null,
+      ffaGraded,
     },
   });
 

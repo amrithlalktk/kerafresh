@@ -12,9 +12,9 @@ export default function Modal({
   wide?: boolean;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
       <div
-        className={`w-full ${wide ? "max-w-xl" : "max-w-md"} rounded-2xl bg-[#fdfcfa] p-5 shadow-xl dark:bg-[#1e2231]`}
+        className={`w-full ${wide ? "max-w-xl" : "max-w-md"} rounded-2xl border border-white/50 bg-white/80 p-5 shadow-xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#1e2231]/80`}
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-semibold">{title}</h2>

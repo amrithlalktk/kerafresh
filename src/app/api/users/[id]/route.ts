@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSession } from "@/lib/auth";
+import { getSession, hashPassword } from "@/lib/auth";
 import { z } from "zod";
 
-const patchSchema = z.object({ active: z.boolean() });
+const patchSchema = z.object({
+  active: z.boolean().optional(),
+  password: z.string().min(8, "Password must be at least 8 characters").optional(),
+});
 
 export async function PATCH(
   request: Request,
@@ -18,17 +21,23 @@ export async function PATCH(
   const body = await request.json();
   const parsed = patchSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid input" },
+      { status: 400 }
+    );
+  }
+  if (parsed.data.active === undefined && parsed.data.password === undefined) {
+    return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }
 
-  if (id === session.userId && !parsed.data.active) {
+  if (id === session.userId && parsed.data.active === false) {
     return NextResponse.json(
       { error: "You can't deactivate your own account" },
       { status: 400 }
     );
   }
 
-  if (!parsed.data.active) {
+  if (parsed.data.active === false) {
     const target = await db.user.findUnique({ where: { id } });
     if (target?.role === "ADMIN") {
       const activeAdmins = await db.user.count({ where: { role: "ADMIN", active: true } });
@@ -43,7 +52,10 @@ export async function PATCH(
 
   const user = await db.user.update({
     where: { id },
-    data: { active: parsed.data.active },
+    data: {
+      ...(parsed.data.active !== undefined ? { active: parsed.data.active } : {}),
+      ...(parsed.data.password ? { passwordHash: await hashPassword(parsed.data.password) } : {}),
+    },
     select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
   });
   return NextResponse.json(user);
