@@ -3,12 +3,13 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { saleSchema } from "@/lib/validation";
 import { toCents } from "@/lib/money";
+import { getAvailableAdvanceForSalesMap } from "@/lib/balances";
 import type { Prisma } from "@prisma/client";
 
 const PAGE_SIZE = 25;
 const SALE_INCLUDE = {
   party: { select: { name: true } },
-  items: { include: { item: { select: { name: true, unit: true } } } },
+  items: { include: { item: { select: { name: true, unit: true, purchasePriceCents: true } } } },
   charges: true,
   payments: { orderBy: { date: "asc" } },
   recordedBy: { select: { name: true } },
@@ -22,8 +23,13 @@ export async function GET(request: Request) {
   const from = searchParams.get("from");
   const to = searchParams.get("to");
   const partyId = searchParams.get("partyId");
+  const itemId = searchParams.get("itemId");
   const q = searchParams.get("q")?.trim();
   const page = Math.max(1, Number(searchParams.get("page") ?? "1"));
+  // Lets a party statement request everything in one call instead of
+  // paging through — capped well above what a small business would ever
+  // need in one view.
+  const pageSize = Math.min(1000, Math.max(1, Number(searchParams.get("pageSize") ?? PAGE_SIZE)));
 
   const where: Prisma.SaleWhereInput = {};
   if (from || to) {
@@ -36,6 +42,7 @@ export async function GET(request: Request) {
     }
   }
   if (partyId) where.partyId = partyId;
+  if (itemId) where.items = { some: { itemId } };
   if (q) {
     where.OR = [
       { party: { name: { contains: q } } },
@@ -49,8 +56,8 @@ export async function GET(request: Request) {
       where,
       include: SALE_INCLUDE,
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     }),
     db.sale.count({ where }),
   ]);
@@ -59,8 +66,8 @@ export async function GET(request: Request) {
     sales,
     total,
     page,
-    pageSize: PAGE_SIZE,
-    totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
   });
 }
 
@@ -77,14 +84,37 @@ export async function POST(request: Request) {
     );
   }
 
-  const { date, partyId, items, charges, paid, paymentMethod, notes } = parsed.data;
+  const { date, partyId, items, charges, paid, advanceAppliedCents, paymentMethod, notes } =
+    parsed.data;
+
+  if (advanceAppliedCents > 0) {
+    if (!partyId) {
+      return NextResponse.json(
+        { error: "Advance credit requires a party" },
+        { status: 400 }
+      );
+    }
+    const availableByParty = await getAvailableAdvanceForSalesMap();
+    if (advanceAppliedCents > (availableByParty.get(partyId) ?? 0)) {
+      return NextResponse.json(
+        { error: "That party doesn't have that much advance credit available" },
+        { status: 400 }
+      );
+    }
+  }
+
   const lineData = items.map((line) => {
     const priceCents = toCents(line.price);
+    const lineTotalCents = priceCents * line.quantity;
+    const taxCents = Math.round((lineTotalCents * line.taxPercent) / 100);
     return {
       itemId: line.itemId,
       quantity: line.quantity,
       priceCents,
-      lineTotalCents: priceCents * line.quantity,
+      lineTotalCents,
+      taxPercent: line.taxPercent,
+      taxCents,
+      ffaGrade: line.ffaGrade ?? null,
     };
   });
   const chargeData = charges.map((charge) => ({
@@ -93,12 +123,36 @@ export async function POST(request: Request) {
     amountCents: toCents(charge.amount),
   }));
   const totalCents =
-    lineData.reduce((sum, l) => sum + l.lineTotalCents, 0) +
+    lineData.reduce((sum, l) => sum + l.lineTotalCents + l.taxCents, 0) +
     chargeData.reduce((sum, c) => sum + c.amountCents, 0);
 
   const paidCents = toCents(paid);
+  const cashPaidCents = Math.max(0, paidCents - advanceAppliedCents);
+  const lastBill = await db.sale.aggregate({ _max: { billNumber: true } });
+  const billNumber = (lastBill._max.billNumber ?? 0) + 1;
+  // "Paid now" on creation becomes the first entry(ies) in the payment
+  // history, so it shows up alongside any installments added later — split
+  // into an ADVANCE-sourced entry (already-received money, just applied to
+  // this bill) and a CASH entry (new money) so the split stays visible.
+  const paymentData = [
+    ...(advanceAppliedCents > 0
+      ? [
+          {
+            date: new Date(date),
+            amountCents: advanceAppliedCents,
+            paymentMethod,
+            source: "ADVANCE" as const,
+            notes: "Settled from advance credit",
+          },
+        ]
+      : []),
+    ...(cashPaidCents > 0
+      ? [{ date: new Date(date), amountCents: cashPaidCents, paymentMethod }]
+      : []),
+  ];
   const sale = await db.sale.create({
     data: {
+      billNumber,
       date: new Date(date),
       partyId: partyId || null,
       totalCents,
@@ -108,11 +162,7 @@ export async function POST(request: Request) {
       userId: session.userId,
       items: { create: lineData },
       charges: { create: chargeData },
-      // "Paid now" on creation becomes the first entry in the payment
-      // history, so it shows up alongside any installments added later.
-      payments: paidCents > 0
-        ? { create: [{ date: new Date(date), amountCents: paidCents, paymentMethod }] }
-        : undefined,
+      payments: paymentData.length > 0 ? { create: paymentData } : undefined,
     },
     include: SALE_INCLUDE,
   });

@@ -44,7 +44,7 @@ docker compose up -d --build
 ```
 
 Open http://localhost:3000. The database lives in a named Docker volume
-(`kerafresh-data`), so your data survives `docker compose restart` / `down`
+(`ledger-data`), so your data survives `docker compose restart` / `down`
 and rebuilds — it's only lost if you explicitly remove the volume
 (`docker compose down -v`).
 
@@ -76,6 +76,10 @@ Set these in `.env`:
   HTTPS (e.g. behind a reverse proxy, or on Vercel). Leave unset for local
   use or the Docker setup here, which are plain HTTP — a `Secure` cookie on
   an HTTP origin won't be stored by the browser, which breaks login.
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` — needed
+  for the "Forgot password?" email link on the login page. Without
+  `SMTP_HOST` set, the reset link is logged to the server console instead of
+  emailed — fine for local testing, not for real use.
 
 ## Roles
 

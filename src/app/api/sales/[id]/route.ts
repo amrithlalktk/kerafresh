@@ -7,7 +7,7 @@ import type { Prisma } from "@prisma/client";
 
 const SALE_INCLUDE = {
   party: { select: { name: true } },
-  items: { include: { item: { select: { name: true, unit: true } } } },
+  items: { include: { item: { select: { name: true, unit: true, purchasePriceCents: true } } } },
   charges: true,
   payments: { orderBy: { date: "asc" } },
   recordedBy: { select: { name: true } },
@@ -47,11 +47,16 @@ export async function PATCH(
   const { date, partyId, items, charges, notes } = parsed.data;
   const lineData = items.map((line) => {
     const priceCents = toCents(line.price);
+    const lineTotalCents = priceCents * line.quantity;
+    const taxCents = Math.round((lineTotalCents * line.taxPercent) / 100);
     return {
       itemId: line.itemId,
       quantity: line.quantity,
       priceCents,
-      lineTotalCents: priceCents * line.quantity,
+      lineTotalCents,
+      taxPercent: line.taxPercent,
+      taxCents,
+      ffaGrade: line.ffaGrade ?? null,
     };
   });
   const chargeData = charges.map((charge) => ({
@@ -60,7 +65,7 @@ export async function PATCH(
     amountCents: toCents(charge.amount),
   }));
   const totalCents =
-    lineData.reduce((sum, l) => sum + l.lineTotalCents, 0) +
+    lineData.reduce((sum, l) => sum + l.lineTotalCents + l.taxCents, 0) +
     chargeData.reduce((sum, c) => sum + c.amountCents, 0);
 
   const sale = await db.$transaction(async (tx) => {

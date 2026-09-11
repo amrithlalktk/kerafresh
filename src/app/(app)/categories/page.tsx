@@ -151,7 +151,7 @@ export default function CategoriesPage() {
       <div>
         <h1 className="text-lg font-semibold">Sale &amp; Purchase charge types</h1>
         <p className="text-sm text-black/60 dark:text-white/60">
-          Common additional charges (lorry rent, packing charge, coolie…) offered
+          Common additional charges (freight, packing charge, handling…) offered
           when recording a sale or purchase. &quot;Other&quot; is always available for
           a one-off charge that isn&apos;t in this list.
         </p>

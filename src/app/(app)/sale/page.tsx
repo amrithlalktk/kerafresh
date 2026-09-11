@@ -2,12 +2,14 @@
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { formatCents } from "@/lib/money";
+import { formatBillNumber, formatCents } from "@/lib/money";
 import { formatDate } from "@/lib/date";
 import type { ChargeType, Item, Party, Sale } from "@/lib/types";
 import Card from "@/components/Card";
 import SalePurchaseForm from "@/components/SalePurchaseForm";
+import QuickEntryRow from "@/components/QuickEntryRow";
 import PaymentHistory from "@/components/PaymentHistory";
+import PaymentStatusIcon from "@/components/PaymentStatusIcon";
 import SearchInput from "@/components/SearchInput";
 
 export default function SalePage() {
@@ -25,6 +27,7 @@ export default function SalePage() {
 
   const [editing, setEditing] = useState<Sale | undefined>(undefined);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const loadLookups = useCallback(async () => {
     const [partiesRes, itemsRes, chargeTypesRes] = await Promise.all([
@@ -65,13 +68,20 @@ export default function SalePage() {
 
   function openEdit(sale: Sale) {
     setEditing(sale);
+    setAdvancedOpen(true);
     formRef.current?.scrollIntoView({ behavior: "smooth" });
   }
 
   function handleSaved() {
     const wasEditing = Boolean(editing);
     setEditing(undefined);
+    setAdvancedOpen(false);
     if (!wasEditing) setPage(1);
+    loadSales();
+  }
+
+  function handleQuickSaved() {
+    setPage(1);
     loadSales();
   }
 
@@ -100,46 +110,102 @@ export default function SalePage() {
       </div>
 
       <div ref={formRef}>
-        <Card title={editing ? "Editing sale" : "Add sale"}>
-          <SalePurchaseForm
-            key={editing?.id ?? "new"}
-            mode="SALE"
-            parties={parties}
-            items={items}
-            chargeTypes={chargeTypes}
-            initial={editing}
-            onSaved={handleSaved}
-            onCancelEdit={() => setEditing(undefined)}
-          />
-        </Card>
+        {editing || advancedOpen ? (
+          <Card title={editing ? "Editing sale" : "Advanced entry (multiple items, charges)"}>
+            <SalePurchaseForm
+              key={editing?.id ?? "new"}
+              mode="SALE"
+              parties={parties}
+              items={items}
+              chargeTypes={chargeTypes}
+              initial={editing}
+              onSaved={handleSaved}
+              onCancelEdit={() => {
+                setEditing(undefined);
+                setAdvancedOpen(false);
+              }}
+            />
+          </Card>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen(true)}
+            className="self-start text-sm underline underline-offset-4"
+          >
+            Need multiple items or extra charges on one sale? Use advanced entry
+          </button>
+        )}
       </div>
 
       <Card className="p-0">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full table-fixed text-sm">
             <thead className="text-left text-black/60 dark:text-white/60">
               <tr>
-                <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">Party</th>
-                <th className="px-4 py-3">Items</th>
-                <th className="px-4 py-3 text-right">Total</th>
-                <th className="px-4 py-3 text-right">Balance</th>
-                <th className="px-4 py-3"></th>
+                <th className="w-20 px-4 py-3">Bill #</th>
+                <th className="w-32 px-4 py-3">Date</th>
+                <th className="w-36 px-4 py-3">Party</th>
+                <th className="px-4 py-3">Item</th>
+                <th className="w-20 px-4 py-3 text-center">Qty</th>
+                <th className="w-24 px-4 py-3">Price</th>
+                <th className="w-24 px-4 py-3 text-center">FFA</th>
+                <th className="w-20 px-4 py-3 text-center">Tax %</th>
+                <th className="w-24 px-4 py-3 text-right">Total</th>
+                <th className="w-40 px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
+              <QuickEntryRow
+                mode="SALE"
+                parties={parties}
+                items={items}
+                onPartyCreated={(p) => setParties((prev) => [...prev, p])}
+                onItemCreated={(i) => setItems((prev) => [...prev, i])}
+                onSaved={handleQuickSaved}
+              />
+              <tr>
+                <td
+                  colSpan={10}
+                  className="bg-black/[0.03] px-4 py-1.5 text-xs font-medium uppercase tracking-wide text-black/40 dark:bg-white/[0.04] dark:text-white/40"
+                >
+                  Recorded sales
+                </td>
+              </tr>
               {sales.map((sale) => {
-                const balance = sale.totalCents - sale.paidCents;
                 return (
                   <Fragment key={sale.id}>
                   <tr className="border-t border-black/5 dark:border-white/5">
-                    <td className="px-4 py-3 whitespace-nowrap">{formatDate(sale.date)}</td>
+                    <td className="px-4 py-3 text-black/50 whitespace-nowrap dark:text-white/50">
+                      #{formatBillNumber(sale.billNumber)}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-2">
+                        <PaymentStatusIcon
+                          date={sale.date}
+                          totalCents={sale.totalCents}
+                          paidCents={sale.paidCents}
+                        />
+                        {formatDate(sale.date)}
+                      </span>
+                    </td>
                     <td className="px-4 py-3">{sale.party?.name ?? "Cash sale"}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" colSpan={5}>
                       <div className="flex flex-col gap-0.5">
                         {sale.items.map((l) => (
                           <span key={l.id}>
                             {l.item.name} × {l.quantity}
+                            {l.ffaGrade && (
+                              <span className="text-black/50 dark:text-white/50">
+                                {" "}
+                                ({l.ffaGrade})
+                              </span>
+                            )}
+                            {l.taxPercent > 0 && (
+                              <span className="text-black/50 dark:text-white/50">
+                                {" "}
+                                (+{l.taxPercent}% tax)
+                              </span>
+                            )}
                           </span>
                         ))}
                         {sale.charges.map((c) => (
@@ -147,19 +213,27 @@ export default function SalePage() {
                             + {c.label} ({formatCents(c.amountCents)})
                           </span>
                         ))}
+                        {sale.payments
+                          .filter((p) => p.source === "ADVANCE")
+                          .map((p) => (
+                            <span key={p.id} className="text-[#0ca30c]">
+                              {formatCents(p.amountCents)} settled from advance credit
+                            </span>
+                          ))}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       {formatCents(sale.totalCents)}
                     </td>
-                    <td
-                      className={`px-4 py-3 text-right whitespace-nowrap ${
-                        balance > 0 ? "text-[#d03b3b]" : "text-[#0ca30c]"
-                      }`}
-                    >
-                      {balance > 0 ? formatCents(balance) : "Paid"}
-                    </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <a
+                        href={`/print/sale/${sale.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mr-2 underline underline-offset-4"
+                      >
+                        Print
+                      </a>
                       <button
                         onClick={() => setExpandedId(expandedId === sale.id ? null : sale.id)}
                         className="mr-2 underline underline-offset-4"
@@ -176,7 +250,7 @@ export default function SalePage() {
                   </tr>
                   {expandedId === sale.id && (
                     <tr className="border-t border-black/5 dark:border-white/5">
-                      <td colSpan={6} className="p-3">
+                      <td colSpan={10} className="p-3">
                         <PaymentHistory
                           apiBase={`/api/sales/${sale.id}`}
                           payments={sale.payments}
@@ -192,7 +266,7 @@ export default function SalePage() {
               })}
               {sales.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-black/50 dark:text-white/50">
+                  <td colSpan={10} className="px-4 py-6 text-center text-black/50 dark:text-white/50">
                     {search ? "No sales match your search." : "No sales recorded yet."}
                   </td>
                 </tr>

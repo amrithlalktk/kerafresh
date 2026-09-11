@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { FFA_GRADES } from "@/lib/types";
 
 export const signupSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
@@ -49,6 +50,7 @@ export const itemSchema = z.object({
   purchasePrice: z.number().nonnegative("Purchase price can't be negative").default(0),
   openingStockQty: z.number().int().nonnegative().default(0),
   lowStockThreshold: z.number().int().nonnegative().optional().nullable(),
+  ffaGraded: z.boolean().default(false),
 });
 
 // Charge types (lorry rent, packing charge, coolie, etc.) are a manageable
@@ -62,6 +64,8 @@ const saleLineSchema = z.object({
   itemId: z.string().min(1, "Item is required"),
   quantity: z.number().int().positive("Quantity must be at least 1"),
   price: z.number().nonnegative("Price can't be negative"),
+  taxPercent: z.number().min(0, "Tax % can't be negative").max(100, "Tax % can't exceed 100").default(0),
+  ffaGrade: z.enum(FFA_GRADES).optional().nullable(),
 });
 
 const chargeLineSchema = z.object({
@@ -76,6 +80,9 @@ export const saleSchema = z.object({
   items: z.array(saleLineSchema).min(1, "Add at least one item"),
   charges: z.array(chargeLineSchema).optional().default([]),
   paid: z.number().nonnegative().default(0),
+  // How much of `paid` is settled from the party's existing advance credit
+  // (PartyPayment) instead of fresh cash — see POST /api/sales.
+  advanceAppliedCents: z.number().int().nonnegative().default(0),
   paymentMethod: z.enum(["CASH", "BANK"]).default("CASH"),
   notes: z.string().trim().optional().nullable(),
 });
@@ -85,6 +92,15 @@ export const purchaseSchema = saleSchema;
 // A single installment recorded against an existing Sale/Purchase.
 export const paymentSchema = z.object({
   date: z.string().min(1, "Date is required"),
+  amount: z.number().positive("Amount must be greater than 0"),
+  paymentMethod: z.enum(["CASH", "BANK"]).default("CASH"),
+  notes: z.string().trim().optional().nullable(),
+});
+
+// An advance payment with a party, outside of any specific Sale/Purchase.
+export const partyPaymentSchema = z.object({
+  date: z.string().min(1, "Date is required"),
+  direction: z.enum(["RECEIVED", "PAID"]),
   amount: z.number().positive("Amount must be greater than 0"),
   paymentMethod: z.enum(["CASH", "BANK"]).default("CASH"),
   notes: z.string().trim().optional().nullable(),

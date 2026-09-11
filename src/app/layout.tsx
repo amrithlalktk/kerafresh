@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Kerafresh Ledger",
+  title: "Kerafresh",
   description: "Daily business transaction tracker",
 };
 

@@ -22,8 +22,13 @@ export async function GET(request: Request) {
   const from = searchParams.get("from");
   const to = searchParams.get("to");
   const partyId = searchParams.get("partyId");
+  const itemId = searchParams.get("itemId");
   const q = searchParams.get("q")?.trim();
   const page = Math.max(1, Number(searchParams.get("page") ?? "1"));
+  // Lets a party statement request everything in one call instead of
+  // paging through — capped well above what a small business would ever
+  // need in one view.
+  const pageSize = Math.min(1000, Math.max(1, Number(searchParams.get("pageSize") ?? PAGE_SIZE)));
 
   const where: Prisma.PurchaseWhereInput = {};
   if (from || to) {
@@ -36,6 +41,7 @@ export async function GET(request: Request) {
     }
   }
   if (partyId) where.partyId = partyId;
+  if (itemId) where.items = { some: { itemId } };
   if (q) {
     where.OR = [
       { party: { name: { contains: q } } },
@@ -49,8 +55,8 @@ export async function GET(request: Request) {
       where,
       include: PURCHASE_INCLUDE,
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     }),
     db.purchase.count({ where }),
   ]);
@@ -59,8 +65,8 @@ export async function GET(request: Request) {
     purchases,
     total,
     page,
-    pageSize: PAGE_SIZE,
-    totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
   });
 }
 
@@ -80,11 +86,16 @@ export async function POST(request: Request) {
   const { date, partyId, items, charges, paid, paymentMethod, notes } = parsed.data;
   const lineData = items.map((line) => {
     const priceCents = toCents(line.price);
+    const lineTotalCents = priceCents * line.quantity;
+    const taxCents = Math.round((lineTotalCents * line.taxPercent) / 100);
     return {
       itemId: line.itemId,
       quantity: line.quantity,
       priceCents,
-      lineTotalCents: priceCents * line.quantity,
+      lineTotalCents,
+      taxPercent: line.taxPercent,
+      taxCents,
+      ffaGrade: line.ffaGrade ?? null,
     };
   });
   const chargeData = charges.map((charge) => ({
@@ -93,12 +104,15 @@ export async function POST(request: Request) {
     amountCents: toCents(charge.amount),
   }));
   const totalCents =
-    lineData.reduce((sum, l) => sum + l.lineTotalCents, 0) +
+    lineData.reduce((sum, l) => sum + l.lineTotalCents + l.taxCents, 0) +
     chargeData.reduce((sum, c) => sum + c.amountCents, 0);
 
   const paidCents = toCents(paid);
+  const lastBill = await db.purchase.aggregate({ _max: { billNumber: true } });
+  const billNumber = (lastBill._max.billNumber ?? 0) + 1;
   const purchase = await db.purchase.create({
     data: {
+      billNumber,
       date: new Date(date),
       partyId: partyId || null,
       totalCents,

@@ -29,6 +29,7 @@ export default function ItemForm({
   const [lowStockThreshold, setLowStockThreshold] = useState(
     initial?.lowStockThreshold != null ? String(initial.lowStockThreshold) : ""
   );
+  const [ffaGraded, setFfaGraded] = useState(initial?.ffaGraded ?? false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -47,6 +48,7 @@ export default function ItemForm({
           purchasePrice: Number(purchasePrice),
           openingStockQty: Number(openingStockQty || 0),
           lowStockThreshold: lowStockThreshold ? Number(lowStockThreshold) : null,
+          ffaGraded,
         }),
       });
       const data = await res.json();
@@ -127,6 +129,14 @@ export default function ItemForm({
           />
         </div>
       </div>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={ffaGraded}
+          onChange={(e) => setFfaGraded(e.target.checked)}
+        />
+        Needs an FFA grade on sale/purchase lines
+      </label>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="mt-1 flex gap-2">
         <button

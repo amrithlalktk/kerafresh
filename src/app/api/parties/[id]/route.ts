@@ -3,7 +3,30 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { partySchema } from "@/lib/validation";
 import { toCents } from "@/lib/money";
-import { getPartyBalanceMap } from "@/lib/balances";
+import { getAvailableAdvanceForSalesMap, getPartyBalanceMap } from "@/lib/balances";
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+  const party = await db.party.findUnique({ where: { id } });
+  if (!party) return NextResponse.json({ error: "Party not found" }, { status: 404 });
+
+  const [dueByParty, availableAdvanceByParty] = await Promise.all([
+    getPartyBalanceMap(),
+    getAvailableAdvanceForSalesMap(),
+  ]);
+
+  return NextResponse.json({
+    ...party,
+    balanceCents: party.openingBalanceCents + (dueByParty.get(party.id) ?? 0),
+    availableAdvanceCents: availableAdvanceByParty.get(party.id) ?? 0,
+  });
+}
 
 export async function PATCH(
   request: Request,

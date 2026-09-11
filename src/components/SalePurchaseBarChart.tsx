@@ -12,9 +12,9 @@ import {
 } from "recharts";
 import { formatCents } from "@/lib/money";
 
-// Matches the Add Sale (red) / Add Purchase (blue) button colors, so the
-// chart's series identity is consistent with the rest of the app.
-const SALE_COLOR = "#e34948";
+// Matches the Add Sale (brand indigo) / Add Purchase (blue) button colors,
+// so the chart's series identity is consistent with the rest of the app.
+const SALE_COLOR = "#1baf7a";
 const PURCHASE_COLOR = "#2a78d6";
 
 export type SalePurchasePoint = {

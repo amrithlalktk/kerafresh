@@ -18,6 +18,11 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSubmitting, setForgotSubmitting] = useState(false);
+  const [forgotMessage, setForgotMessage] = useState<string | null>(null);
+
   useEffect(() => {
     fetch("/api/auth/bootstrap-check")
       .then((res) => res.json())
@@ -52,6 +57,26 @@ export default function LoginPage() {
     }
   }
 
+  async function handleForgotSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setForgotSubmitting(true);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail }),
+      });
+      const data = await res.json();
+      setForgotMessage(
+        res.ok
+          ? data.message
+          : (data.error ?? "Something went wrong")
+      );
+    } finally {
+      setForgotSubmitting(false);
+    }
+  }
+
   if (checking) return null;
 
   return (
@@ -62,10 +87,44 @@ export default function LoginPage() {
           <Logo iconSize={40} />
         </div>
       <p className="mb-6 text-sm text-black/60 dark:text-white/60">
-        {needsSetup
-          ? "Set up the first admin account to get started."
-          : "Sign in to record and review transactions."}
+        {showForgot
+          ? "Enter your email and we'll send a link to reset your password."
+          : needsSetup
+            ? "Set up the first admin account to get started."
+            : "Sign in to record and review transactions."}
       </p>
+      {showForgot ? (
+        <form onSubmit={handleForgotSubmit} className="flex flex-col gap-3">
+          <input
+            required
+            type="email"
+            placeholder="Email"
+            value={forgotEmail}
+            onChange={(e) => setForgotEmail(e.target.value)}
+            className="rounded-md border border-black/15 px-3 py-2 text-sm dark:border-white/15 dark:bg-transparent"
+          />
+          {forgotMessage && (
+            <p className="text-sm text-black/70 dark:text-white/70">{forgotMessage}</p>
+          )}
+          <button
+            type="submit"
+            disabled={forgotSubmitting}
+            className="rounded-md bg-black px-3 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
+          >
+            {forgotSubmitting ? "Sending…" : "Send reset link"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setShowForgot(false);
+              setForgotMessage(null);
+            }}
+            className="self-start text-sm underline underline-offset-4"
+          >
+            Back to sign in
+          </button>
+        </form>
+      ) : (
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         {needsSetup && (
           <input
@@ -115,7 +174,20 @@ export default function LoginPage() {
               ? "Create admin account"
               : "Sign in"}
         </button>
+        {!needsSetup && (
+          <button
+            type="button"
+            onClick={() => {
+              setShowForgot(true);
+              setForgotEmail(email);
+            }}
+            className="self-start text-sm underline underline-offset-4"
+          >
+            Forgot password?
+          </button>
+        )}
         </form>
+      )}
       </div>
     </div>
   );

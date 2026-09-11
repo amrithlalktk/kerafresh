@@ -286,81 +286,89 @@ export default async function DashboardPage() {
             <SalePurchaseBarChart data={Array.from(byDay.values())} />
           </Card>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Card title="You'll receive">
-              <p className="mb-1 text-xl font-semibold text-[#0ca30c]">
-                {formatCents(totalReceivable)}
-              </p>
-              {overdueReceivable > 0 && (
-                <p className="mb-2 text-xs font-medium text-[#d03b3b]">
-                  {formatCents(overdueReceivable)} overdue ({OVERDUE_DAYS}+ days)
+          <Card title="Party balances">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <p className="mb-1 text-xs font-medium text-black/50 dark:text-white/50">
+                  You&apos;ll receive
                 </p>
-              )}
-              <ul className="flex flex-col gap-1.5 text-sm">
-                {receivable.slice(0, 3).map((p) => {
-                  const overdue = (p.overdueDays ?? 0) > OVERDUE_DAYS;
-                  return (
-                    <li key={p.id} className="flex items-center justify-between gap-2">
-                      <span className="flex min-w-0 items-center gap-1.5">
-                        <span className="truncate text-black/70 dark:text-white/70">{p.name}</span>
-                        {overdue && (
-                          <span className="shrink-0 rounded-full bg-[#d03b3b]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#d03b3b]">
-                            {p.overdueDays}d overdue
-                          </span>
-                        )}
-                      </span>
-                      <span className="shrink-0">{formatCents(p.balanceCents)}</span>
-                    </li>
-                  );
-                })}
-                {receivable.length === 0 && (
-                  <li className="text-black/50 dark:text-white/50">Nothing outstanding.</li>
+                <p className="mb-1 text-xl font-semibold text-[#0ca30c]">
+                  {formatCents(totalReceivable)}
+                </p>
+                {overdueReceivable > 0 && (
+                  <p className="mb-2 text-xs font-medium text-[#d03b3b]">
+                    {formatCents(overdueReceivable)} overdue ({OVERDUE_DAYS}+ days)
+                  </p>
                 )}
-              </ul>
-              {receivable.length > 3 && (
-                <Link href="/parties" className="mt-2 block text-sm underline underline-offset-4">
-                  +{receivable.length - 3} more
-                </Link>
-              )}
-            </Card>
+                <ul className="flex flex-col gap-1.5 text-sm">
+                  {receivable.slice(0, 3).map((p) => {
+                    const overdue = (p.overdueDays ?? 0) > OVERDUE_DAYS;
+                    return (
+                      <li key={p.id} className="flex items-center justify-between gap-2">
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <span className="truncate text-black/70 dark:text-white/70">{p.name}</span>
+                          {overdue && (
+                            <span className="shrink-0 rounded-full bg-[#d03b3b]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#d03b3b]">
+                              {p.overdueDays}d overdue
+                            </span>
+                          )}
+                        </span>
+                        <span className="shrink-0">{formatCents(p.balanceCents)}</span>
+                      </li>
+                    );
+                  })}
+                  {receivable.length === 0 && (
+                    <li className="text-black/50 dark:text-white/50">Nothing outstanding.</li>
+                  )}
+                </ul>
+                {receivable.length > 3 && (
+                  <Link href="/parties" className="mt-2 block text-sm underline underline-offset-4">
+                    +{receivable.length - 3} more
+                  </Link>
+                )}
+              </div>
 
-            <Card title="You'll pay">
-              <p className="mb-1 text-xl font-semibold text-[#d03b3b]">
-                {formatCents(totalPayable)}
-              </p>
-              {overduePayable > 0 && (
-                <p className="mb-2 text-xs font-medium text-[#d03b3b]">
-                  {formatCents(overduePayable)} overdue ({OVERDUE_DAYS}+ days)
+              <div>
+                <p className="mb-1 text-xs font-medium text-black/50 dark:text-white/50">
+                  You&apos;ll pay
                 </p>
-              )}
-              <ul className="flex flex-col gap-1.5 text-sm">
-                {payable.slice(0, 3).map((p) => {
-                  const overdue = (p.overdueDays ?? 0) > OVERDUE_DAYS;
-                  return (
-                    <li key={p.id} className="flex items-center justify-between gap-2">
-                      <span className="flex min-w-0 items-center gap-1.5">
-                        <span className="truncate text-black/70 dark:text-white/70">{p.name}</span>
-                        {overdue && (
-                          <span className="shrink-0 rounded-full bg-[#d03b3b]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#d03b3b]">
-                            {p.overdueDays}d overdue
-                          </span>
-                        )}
-                      </span>
-                      <span className="shrink-0">{formatCents(-p.balanceCents)}</span>
-                    </li>
-                  );
-                })}
-                {payable.length === 0 && (
-                  <li className="text-black/50 dark:text-white/50">Nothing outstanding.</li>
+                <p className="mb-1 text-xl font-semibold text-[#d03b3b]">
+                  {formatCents(totalPayable)}
+                </p>
+                {overduePayable > 0 && (
+                  <p className="mb-2 text-xs font-medium text-[#d03b3b]">
+                    {formatCents(overduePayable)} overdue ({OVERDUE_DAYS}+ days)
+                  </p>
                 )}
-              </ul>
-              {payable.length > 3 && (
-                <Link href="/parties" className="mt-2 block text-sm underline underline-offset-4">
-                  +{payable.length - 3} more
-                </Link>
-              )}
-            </Card>
-          </div>
+                <ul className="flex flex-col gap-1.5 text-sm">
+                  {payable.slice(0, 3).map((p) => {
+                    const overdue = (p.overdueDays ?? 0) > OVERDUE_DAYS;
+                    return (
+                      <li key={p.id} className="flex items-center justify-between gap-2">
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <span className="truncate text-black/70 dark:text-white/70">{p.name}</span>
+                          {overdue && (
+                            <span className="shrink-0 rounded-full bg-[#d03b3b]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#d03b3b]">
+                              {p.overdueDays}d overdue
+                            </span>
+                          )}
+                        </span>
+                        <span className="shrink-0">{formatCents(-p.balanceCents)}</span>
+                      </li>
+                    );
+                  })}
+                  {payable.length === 0 && (
+                    <li className="text-black/50 dark:text-white/50">Nothing outstanding.</li>
+                  )}
+                </ul>
+                {payable.length > 3 && (
+                  <Link href="/parties" className="mt-2 block text-sm underline underline-offset-4">
+                    +{payable.length - 3} more
+                  </Link>
+                )}
+              </div>
+            </div>
+          </Card>
 
           <Card
             title="Today's purchases"

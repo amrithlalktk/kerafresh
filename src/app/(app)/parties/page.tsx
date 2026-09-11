@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { formatCents } from "@/lib/money";
 import type { Party } from "@/lib/types";
 import Modal from "@/components/Modal";
 import Card from "@/components/Card";
 import PartyForm from "@/components/PartyForm";
+import PartyAdvancePayments from "@/components/PartyAdvancePayments";
 import SearchInput from "@/components/SearchInput";
 
 export default function PartiesPage() {
@@ -17,6 +19,7 @@ export default function PartiesPage() {
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Party | undefined>(undefined);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/parties");
@@ -98,8 +101,13 @@ export default function PartiesPage() {
             </thead>
             <tbody>
               {filteredParties.map((p) => (
-                <tr key={p.id} className="border-t border-black/5 dark:border-white/5">
-                  <td className="px-4 py-3">{p.name}</td>
+                <Fragment key={p.id}>
+                <tr className="border-t border-black/5 dark:border-white/5">
+                  <td className="px-4 py-3">
+                    <Link href={`/parties/${p.id}`} className="underline underline-offset-4">
+                      {p.name}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3 capitalize">{p.type.toLowerCase()}</td>
                   <td className="px-4 py-3">{p.phone ?? "—"}</td>
                   <td
@@ -116,6 +124,12 @@ export default function PartiesPage() {
                       : `${p.balanceCents > 0 ? "Receive " : "Pay "}${formatCents(Math.abs(p.balanceCents))}`}
                   </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <button
+                      onClick={() => setExpandedId(expandedId === p.id ? null : p.id)}
+                      className="mr-2 underline underline-offset-4"
+                    >
+                      Advance
+                    </button>
                     <button onClick={() => openEdit(p)} className="mr-2 underline underline-offset-4">
                       Edit
                     </button>
@@ -124,6 +138,18 @@ export default function PartiesPage() {
                     </button>
                   </td>
                 </tr>
+                {expandedId === p.id && (
+                  <tr className="border-t border-black/5 dark:border-white/5">
+                    <td colSpan={5} className="p-3">
+                      <PartyAdvancePayments
+                        partyId={p.id}
+                        availableAdvanceCents={p.availableAdvanceCents}
+                        onChange={load}
+                      />
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
               {filteredParties.length === 0 && (
                 <tr>

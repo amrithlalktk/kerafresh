@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { formatCents } from "@/lib/money";
 import { formatDate } from "@/lib/date";
-import type { PaymentLine, PaymentMethod } from "@/lib/types";
+import { paymentMethodLabel, type PaymentLine, type PaymentMethod } from "@/lib/types";
 
 const inputClass =
   "rounded-md border border-black/15 px-2 py-1.5 text-sm dark:border-white/15 dark:bg-transparent";
@@ -86,8 +86,13 @@ export default function PaymentHistory({
               <span>
                 {formatCents(p.amountCents)} given on {formatDate(p.date)}
                 <span className="ml-2 text-xs text-black/50 dark:text-white/50">
-                  {p.paymentMethod === "CASH" ? "Cash" : "Bank"}
+                  {paymentMethodLabel(p.paymentMethod)}
                 </span>
+                {p.source === "ADVANCE" && (
+                  <span className="ml-2 text-xs font-medium text-[#0ca30c]">
+                    from advance credit
+                  </span>
+                )}
               </span>
               <button
                 type="button"

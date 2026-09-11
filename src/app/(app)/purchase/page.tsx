@@ -2,12 +2,14 @@
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { formatCents } from "@/lib/money";
+import { formatBillNumber, formatCents } from "@/lib/money";
 import { formatDate } from "@/lib/date";
 import type { ChargeType, Item, Party, Purchase } from "@/lib/types";
 import Card from "@/components/Card";
 import SalePurchaseForm from "@/components/SalePurchaseForm";
+import QuickEntryRow from "@/components/QuickEntryRow";
 import PaymentHistory from "@/components/PaymentHistory";
+import PaymentStatusIcon from "@/components/PaymentStatusIcon";
 import SearchInput from "@/components/SearchInput";
 
 export default function PurchasePage() {
@@ -25,6 +27,7 @@ export default function PurchasePage() {
 
   const [editing, setEditing] = useState<Purchase | undefined>(undefined);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const loadLookups = useCallback(async () => {
     const [partiesRes, itemsRes, chargeTypesRes] = await Promise.all([
@@ -65,13 +68,20 @@ export default function PurchasePage() {
 
   function openEdit(purchase: Purchase) {
     setEditing(purchase);
+    setAdvancedOpen(true);
     formRef.current?.scrollIntoView({ behavior: "smooth" });
   }
 
   function handleSaved() {
     const wasEditing = Boolean(editing);
     setEditing(undefined);
+    setAdvancedOpen(false);
     if (!wasEditing) setPage(1);
+    loadPurchases();
+  }
+
+  function handleQuickSaved() {
+    setPage(1);
     loadPurchases();
   }
 
@@ -100,46 +110,102 @@ export default function PurchasePage() {
       </div>
 
       <div ref={formRef}>
-        <Card title={editing ? "Editing purchase" : "Add purchase"}>
-          <SalePurchaseForm
-            key={editing?.id ?? "new"}
-            mode="PURCHASE"
-            parties={parties}
-            items={items}
-            chargeTypes={chargeTypes}
-            initial={editing}
-            onSaved={handleSaved}
-            onCancelEdit={() => setEditing(undefined)}
-          />
-        </Card>
+        {editing || advancedOpen ? (
+          <Card title={editing ? "Editing purchase" : "Advanced entry (multiple items, charges)"}>
+            <SalePurchaseForm
+              key={editing?.id ?? "new"}
+              mode="PURCHASE"
+              parties={parties}
+              items={items}
+              chargeTypes={chargeTypes}
+              initial={editing}
+              onSaved={handleSaved}
+              onCancelEdit={() => {
+                setEditing(undefined);
+                setAdvancedOpen(false);
+              }}
+            />
+          </Card>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen(true)}
+            className="self-start text-sm underline underline-offset-4"
+          >
+            Need multiple items or extra charges on one purchase? Use advanced entry
+          </button>
+        )}
       </div>
 
       <Card className="p-0">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full table-fixed text-sm">
             <thead className="text-left text-black/60 dark:text-white/60">
               <tr>
-                <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">Party</th>
-                <th className="px-4 py-3">Items</th>
-                <th className="px-4 py-3 text-right">Total</th>
-                <th className="px-4 py-3 text-right">Balance</th>
-                <th className="px-4 py-3"></th>
+                <th className="w-20 px-4 py-3">Bill #</th>
+                <th className="w-32 px-4 py-3">Date</th>
+                <th className="w-36 px-4 py-3">Party</th>
+                <th className="px-4 py-3">Item</th>
+                <th className="w-20 px-4 py-3 text-center">Qty</th>
+                <th className="w-24 px-4 py-3">Price</th>
+                <th className="w-24 px-4 py-3 text-center">FFA</th>
+                <th className="w-20 px-4 py-3 text-center">Tax %</th>
+                <th className="w-24 px-4 py-3 text-right">Total</th>
+                <th className="w-40 px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
+              <QuickEntryRow
+                mode="PURCHASE"
+                parties={parties}
+                items={items}
+                onPartyCreated={(p) => setParties((prev) => [...prev, p])}
+                onItemCreated={(i) => setItems((prev) => [...prev, i])}
+                onSaved={handleQuickSaved}
+              />
+              <tr>
+                <td
+                  colSpan={10}
+                  className="bg-black/[0.03] px-4 py-1.5 text-xs font-medium uppercase tracking-wide text-black/40 dark:bg-white/[0.04] dark:text-white/40"
+                >
+                  Recorded purchases
+                </td>
+              </tr>
               {purchases.map((purchase) => {
-                const balance = purchase.totalCents - purchase.paidCents;
                 return (
                   <Fragment key={purchase.id}>
                   <tr className="border-t border-black/5 dark:border-white/5">
-                    <td className="px-4 py-3 whitespace-nowrap">{formatDate(purchase.date)}</td>
+                    <td className="px-4 py-3 text-black/50 whitespace-nowrap dark:text-white/50">
+                      #{formatBillNumber(purchase.billNumber)}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-2">
+                        <PaymentStatusIcon
+                          date={purchase.date}
+                          totalCents={purchase.totalCents}
+                          paidCents={purchase.paidCents}
+                        />
+                        {formatDate(purchase.date)}
+                      </span>
+                    </td>
                     <td className="px-4 py-3">{purchase.party?.name ?? "—"}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" colSpan={5}>
                       <div className="flex flex-col gap-0.5">
                         {purchase.items.map((l) => (
                           <span key={l.id}>
                             {l.item.name} × {l.quantity}
+                            {l.ffaGrade && (
+                              <span className="text-black/50 dark:text-white/50">
+                                {" "}
+                                ({l.ffaGrade})
+                              </span>
+                            )}
+                            {l.taxPercent > 0 && (
+                              <span className="text-black/50 dark:text-white/50">
+                                {" "}
+                                (+{l.taxPercent}% tax)
+                              </span>
+                            )}
                           </span>
                         ))}
                         {purchase.charges.map((c) => (
@@ -152,14 +218,15 @@ export default function PurchasePage() {
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       {formatCents(purchase.totalCents)}
                     </td>
-                    <td
-                      className={`px-4 py-3 text-right whitespace-nowrap ${
-                        balance > 0 ? "text-[#d03b3b]" : "text-[#0ca30c]"
-                      }`}
-                    >
-                      {balance > 0 ? formatCents(balance) : "Paid"}
-                    </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <a
+                        href={`/print/purchase/${purchase.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mr-2 underline underline-offset-4"
+                      >
+                        Print
+                      </a>
                       <button
                         onClick={() => setExpandedId(expandedId === purchase.id ? null : purchase.id)}
                         className="mr-2 underline underline-offset-4"
@@ -176,7 +243,7 @@ export default function PurchasePage() {
                   </tr>
                   {expandedId === purchase.id && (
                     <tr className="border-t border-black/5 dark:border-white/5">
-                      <td colSpan={6} className="p-3">
+                      <td colSpan={10} className="p-3">
                         <PaymentHistory
                           apiBase={`/api/purchases/${purchase.id}`}
                           payments={purchase.payments}
@@ -192,7 +259,7 @@ export default function PurchasePage() {
               })}
               {purchases.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-black/50 dark:text-white/50">
+                  <td colSpan={10} className="px-4 py-6 text-center text-black/50 dark:text-white/50">
                     {search ? "No purchases match your search." : "No purchases recorded yet."}
                   </td>
                 </tr>
