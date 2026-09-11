@@ -141,7 +141,6 @@ export default function PurchasePage() {
       </div>
 
       <Card className="p-0">
-        <div className="overflow-x-auto">
           <table className="w-full table-fixed text-sm">
             <thead className="text-left text-black/60 dark:text-white/60">
               <tr>
@@ -154,7 +153,7 @@ export default function PurchasePage() {
                 <th className="w-24 px-4 py-3 text-center">FFA</th>
                 <th className="w-20 px-4 py-3 text-center">Tax %</th>
                 <th className="w-24 px-4 py-3 text-right">Total</th>
-                <th className="w-40 px-4 py-3"></th>
+                <th className="w-48 px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
@@ -221,7 +220,7 @@ export default function PurchasePage() {
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       {formatCents(purchase.totalCents)}
                     </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <td className="px-4 py-3 text-right">
                       <a
                         href={`/print/purchase/${purchase.id}`}
                         target="_blank"
@@ -275,7 +274,6 @@ export default function PurchasePage() {
               )}
             </tbody>
           </table>
-        </div>
       </Card>
 
       {totalPages > 1 && (

@@ -28,9 +28,7 @@ export default function SuggestInput({
 }) {
   const [open, setOpen] = useState(false);
   const trimmed = value.trim().toLowerCase();
-  const filtered = (
-    trimmed ? options.filter((o) => o.toLowerCase().includes(trimmed)) : options
-  ).slice(0, 8);
+  const filtered = trimmed ? options.filter((o) => o.toLowerCase().includes(trimmed)) : options;
 
   return (
     <div className="relative">
@@ -54,7 +52,7 @@ export default function SuggestInput({
         className={className}
       />
       {open && filtered.length > 0 && (
-        <ul className="absolute inset-x-0 top-full z-20 mt-1 max-h-48 overflow-auto rounded-md border border-black/10 bg-white py-1 text-sm shadow-lg dark:border-white/10 dark:bg-[#1e2231]">
+        <ul className="absolute inset-x-0 top-full z-20 mt-1 rounded-md border border-black/10 bg-white py-1 text-sm shadow-lg dark:border-white/10 dark:bg-[#1e2231]">
           {filtered.map((name) => (
             <li key={name}>
               <button
