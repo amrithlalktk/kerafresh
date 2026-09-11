@@ -56,7 +56,9 @@ model User {
   id           String        @id @default(cuid())
   name         String
   email        String        @unique
-  passwordHash String
+  // Null until the user follows their invite-setup link. Admin-created
+  // accounts start this way instead of an admin-chosen temporary password.
+  passwordHash String?
   role         Role          @default(STAFF)
   active       Boolean       @default(true)
   createdAt    DateTime      @default(now())

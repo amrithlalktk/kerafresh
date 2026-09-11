@@ -1,7 +1,11 @@
 import { cookies } from "next/headers";
+import { randomBytes, createHash } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import type { Role } from "@prisma/client";
+import { db } from "@/lib/db";
+
+const PASSWORD_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 export const SESSION_COOKIE = "session";
 const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 7; // 7 days
@@ -21,6 +25,17 @@ export type SessionPayload = {
 
 export function hashPassword(password: string) {
   return bcrypt.hash(password, 10);
+}
+
+// Used for both "forgot password" and the new-user invite-setup link — same
+// shape, same lifetime, same one-time-use semantics either way.
+export async function createPasswordSetupToken(userId: string) {
+  const rawToken = randomBytes(32).toString("hex");
+  const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+  await db.passwordResetToken.create({
+    data: { userId, tokenHash, expiresAt: new Date(Date.now() + PASSWORD_TOKEN_TTL_MS) },
+  });
+  return rawToken;
 }
 
 export function verifyPassword(password: string, hash: string) {

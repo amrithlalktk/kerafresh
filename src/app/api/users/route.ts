@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSession, hashPassword } from "@/lib/auth";
-import { createUserSchema } from "@/lib/validation";
+import { getSession, createPasswordSetupToken } from "@/lib/auth";
+import { inviteUserSchema } from "@/lib/validation";
+import { sendMail } from "@/lib/mail";
+import { getAppOrigin } from "@/lib/url";
 
 export async function GET() {
   const session = await getSession();
@@ -10,10 +12,20 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const users = await db.user.findMany({
-    select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      active: true,
+      createdAt: true,
+      passwordHash: true,
+    },
     orderBy: { createdAt: "asc" },
   });
-  return NextResponse.json(users);
+  return NextResponse.json(
+    users.map(({ passwordHash, ...u }) => ({ ...u, hasPassword: passwordHash !== null }))
+  );
 }
 
 export async function POST(request: Request) {
@@ -23,7 +35,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await request.json();
-  const parsed = createUserSchema.safeParse(body);
+  const parsed = inviteUserSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message ?? "Invalid input" },
@@ -31,16 +43,26 @@ export async function POST(request: Request) {
     );
   }
 
-  const { name, email, password, role } = parsed.data;
-  const passwordHash = await hashPassword(password);
+  const { name, email, role } = parsed.data;
 
+  let user;
   try {
-    const user = await db.user.create({
-      data: { name, email, passwordHash, role },
+    user = await db.user.create({
+      data: { name, email, role, passwordHash: null },
       select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
     });
-    return NextResponse.json(user);
   } catch {
     return NextResponse.json({ error: "A user with that email already exists" }, { status: 409 });
   }
+
+  const rawToken = await createPasswordSetupToken(user.id);
+  const origin = getAppOrigin(request);
+  const setupUrl = `${origin}/reset-password?token=${rawToken}`;
+  await sendMail({
+    to: user.email,
+    subject: "Set up your Kerafresh account",
+    text: `Hi ${name},\n\nAn account has been created for you on Kerafresh. Set your password to get started — this link expires in 1 hour and can only be used once:\n\n${setupUrl}`,
+  });
+
+  return NextResponse.json(user);
 }

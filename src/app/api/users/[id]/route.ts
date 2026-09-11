@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSession, hashPassword } from "@/lib/auth";
+import { getSession, hashPassword, createPasswordSetupToken } from "@/lib/auth";
+import { sendMail } from "@/lib/mail";
+import { getAppOrigin } from "@/lib/url";
 import { z } from "zod";
 
 const patchSchema = z.object({
   active: z.boolean().optional(),
   password: z.string().min(8, "Password must be at least 8 characters").optional(),
+  resendInvite: z.literal(true).optional(),
 });
 
 export async function PATCH(
@@ -26,8 +29,32 @@ export async function PATCH(
       { status: 400 }
     );
   }
-  if (parsed.data.active === undefined && parsed.data.password === undefined) {
+  if (
+    parsed.data.active === undefined &&
+    parsed.data.password === undefined &&
+    parsed.data.resendInvite === undefined
+  ) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
+  }
+
+  if (parsed.data.resendInvite) {
+    const target = await db.user.findUnique({ where: { id } });
+    if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (target.passwordHash) {
+      return NextResponse.json(
+        { error: "This user has already set up their account" },
+        { status: 400 }
+      );
+    }
+    const rawToken = await createPasswordSetupToken(target.id);
+    const origin = getAppOrigin(request);
+    const setupUrl = `${origin}/reset-password?token=${rawToken}`;
+    await sendMail({
+      to: target.email,
+      subject: "Set up your Kerafresh account",
+      text: `Hi ${target.name},\n\nAn account has been created for you on Kerafresh. Set your password to get started — this link expires in 1 hour and can only be used once:\n\n${setupUrl}`,
+    });
+    return NextResponse.json({ ok: true });
   }
 
   if (id === session.userId && parsed.data.active === false) {

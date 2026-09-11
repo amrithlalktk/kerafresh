@@ -1,33 +1,13 @@
-import { randomBytes, createHash } from "crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { createPasswordSetupToken } from "@/lib/auth";
 import { sendMail } from "@/lib/mail";
-
-const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+import { getAppOrigin } from "@/lib/url";
 
 const schema = z.object({
   email: z.string().trim().email("Enter a valid email"),
 });
-
-// `request.url` reflects the app's own internal listening address, not the
-// public URL a user's browser actually hit — behind Docker's port mapping,
-// a reverse proxy, or Vercel's edge, those differ, so a reset link built
-// from it can point somewhere the user can't reach. Prefer an explicit
-// `APP_URL` (set it once per deployment), then Vercel's own env var, then
-// the forwarded headers a proxy sets, before falling back to `request.url`.
-function getAppOrigin(request: Request) {
-  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
-    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-  }
-  const forwardedHost = request.headers.get("x-forwarded-host");
-  if (forwardedHost) {
-    const proto = request.headers.get("x-forwarded-proto") ?? "https";
-    return `${proto}://${forwardedHost}`;
-  }
-  return new URL(request.url).origin;
-}
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -50,16 +30,7 @@ export async function POST(request: Request) {
   const user = await db.user.findUnique({ where: { email: parsed.data.email } });
   if (!user || !user.active) return genericResponse;
 
-  const rawToken = randomBytes(32).toString("hex");
-  const tokenHash = createHash("sha256").update(rawToken).digest("hex");
-
-  await db.passwordResetToken.create({
-    data: {
-      userId: user.id,
-      tokenHash,
-      expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
-    },
-  });
+  const rawToken = await createPasswordSetupToken(user.id);
 
   const origin = getAppOrigin(request);
   const resetUrl = `${origin}/reset-password?token=${rawToken}`;

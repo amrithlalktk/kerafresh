@@ -20,6 +20,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }
 
+  if (!user.passwordHash) {
+    return NextResponse.json(
+      { error: "This account hasn't been set up yet — check your email for the setup link." },
+      { status: 401 }
+    );
+  }
+
   const validPassword = await verifyPassword(password, user.passwordHash);
   if (!validPassword) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });

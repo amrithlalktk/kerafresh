@@ -11,21 +11,26 @@ type AppUser = {
   role: Role;
   active: boolean;
   createdAt: string;
+  hasPassword: boolean;
 };
 
 export default function UsersPage() {
   const [users, setUsers] = useState<AppUser[]>([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("STAFF");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [invitedEmail, setInvitedEmail] = useState<string | null>(null);
   const [resettingId, setResettingId] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [resetError, setResetError] = useState<string | null>(null);
   const [resetSubmitting, setResetSubmitting] = useState(false);
   const [resetDoneFor, setResetDoneFor] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [resendError, setResendError] = useState<string | null>(null);
+  const [resendErrorFor, setResendErrorFor] = useState<string | null>(null);
+  const [resendDoneFor, setResendDoneFor] = useState<string | null>(null);
 
   async function load() {
     const res = await fetch("/api/users");
@@ -39,25 +44,49 @@ export default function UsersPage() {
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setInvitedEmail(null);
     setSubmitting(true);
     try {
       const res = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, role }),
+        body: JSON.stringify({ name, email, role }),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Something went wrong");
         return;
       }
+      setInvitedEmail(email);
       setName("");
       setEmail("");
-      setPassword("");
       setRole("STAFF");
       load();
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleResendInvite(u: AppUser) {
+    setResendError(null);
+    setResendErrorFor(null);
+    setResendDoneFor(null);
+    setResendingId(u.id);
+    try {
+      const res = await fetch(`/api/users/${u.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resendInvite: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setResendError(data.error ?? "Could not resend invite");
+        setResendErrorFor(u.id);
+        return;
+      }
+      setResendDoneFor(u.id);
+    } finally {
+      setResendingId(null);
     }
   }
 
@@ -130,17 +159,6 @@ export default function UsersPage() {
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-black/60 dark:text-white/60">Temporary password</label>
-          <input
-            required
-            type="password"
-            minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="rounded-md border border-black/15 px-2 py-1 text-sm dark:border-white/15 dark:bg-transparent"
-          />
-        </div>
-        <div className="flex flex-col gap-1">
           <label className="text-xs text-black/60 dark:text-white/60">Role</label>
           <select
             value={role}
@@ -155,9 +173,15 @@ export default function UsersPage() {
           disabled={submitting}
           className="rounded-md bg-black px-3 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
         >
-          Create user
+          {submitting ? "Sending invite…" : "Send invite"}
         </button>
         {error && <p className="w-full text-sm text-red-600">{error}</p>}
+        {invitedEmail && (
+          <p className="w-full text-sm text-[#0ca30c]">
+            Invite sent to {invitedEmail} — they can set their password using the link emailed to
+            them.
+          </p>
+        )}
       </form>
       </Card>
 
@@ -180,19 +204,44 @@ export default function UsersPage() {
                 <td className="px-3 py-2">{u.name}</td>
                 <td className="px-3 py-2">{u.email}</td>
                 <td className="px-3 py-2">{u.role}</td>
-                <td className="px-3 py-2">{u.active ? "Active" : "Deactivated"}</td>
+                <td className="px-3 py-2">
+                  {!u.active ? "Deactivated" : !u.hasPassword ? "Pending setup" : "Active"}
+                </td>
                 <td className="px-3 py-2 text-right whitespace-nowrap">
+                  {!u.hasPassword && (
+                    <button
+                      onClick={() => handleResendInvite(u)}
+                      disabled={resendingId === u.id}
+                      className="mr-3 underline underline-offset-4 disabled:opacity-50"
+                    >
+                      {resendingId === u.id ? "Sending…" : "Resend invite"}
+                    </button>
+                  )}
                   <button
                     onClick={() => (resettingId === u.id ? setResettingId(null) : openReset(u))}
                     className="mr-3 underline underline-offset-4"
                   >
-                    Reset password
+                    Set password directly
                   </button>
                   <button onClick={() => toggleActive(u)} className="underline underline-offset-4">
                     {u.active ? "Deactivate" : "Reactivate"}
                   </button>
                 </td>
               </tr>
+              {resendErrorFor === u.id && resendError && (
+                <tr>
+                  <td colSpan={5} className="px-3 pb-2 text-sm text-red-600">
+                    {resendError}
+                  </td>
+                </tr>
+              )}
+              {resendDoneFor === u.id && (
+                <tr>
+                  <td colSpan={5} className="px-3 pb-2 text-sm text-[#0ca30c]">
+                    Invite resent to {u.email}.
+                  </td>
+                </tr>
+              )}
               {resettingId === u.id && (
                 <tr className="border-t border-black/5 dark:border-white/5">
                   <td colSpan={5} className="p-3">

@@ -12,7 +12,11 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
-export const createUserSchema = signupSchema.extend({
+// Admin-created accounts get emailed a setup link instead of an
+// admin-chosen temporary password — see POST /api/users.
+export const inviteUserSchema = z.object({
+  name: z.string().trim().min(1, "Name is required"),
+  email: z.string().trim().email("Enter a valid email"),
   role: z.enum(["ADMIN", "STAFF"]),
 });
 
