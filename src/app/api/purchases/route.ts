@@ -24,6 +24,8 @@ export async function GET(request: Request) {
   const partyId = searchParams.get("partyId");
   const itemId = searchParams.get("itemId");
   const q = searchParams.get("q")?.trim();
+  const sortBy = searchParams.get("sortBy") === "billNumber" ? "billNumber" : "date";
+  const sortDir = searchParams.get("sortDir") === "asc" ? "asc" : "desc";
   const page = Math.max(1, Number(searchParams.get("page") ?? "1"));
   // Lets a party statement request everything in one call instead of
   // paging through — capped well above what a small business would ever
@@ -54,7 +56,10 @@ export async function GET(request: Request) {
     db.purchase.findMany({
       where,
       include: PURCHASE_INCLUDE,
-      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+      orderBy:
+        sortBy === "billNumber"
+          ? [{ billNumber: sortDir }, { createdAt: "desc" }]
+          : [{ date: sortDir }, { createdAt: "desc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),

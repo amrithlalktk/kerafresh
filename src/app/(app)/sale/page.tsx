@@ -27,6 +27,8 @@ export default function SalePage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"date" | "billNumber">("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const [editing, setEditing] = useState<Sale | undefined>(undefined);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -44,13 +46,13 @@ export default function SalePage() {
   }, []);
 
   const loadSales = useCallback(async () => {
-    const params = new URLSearchParams({ page: String(page) });
+    const params = new URLSearchParams({ page: String(page), sortBy, sortDir });
     if (search.trim()) params.set("q", search.trim());
     const res = await fetch(`/api/sales?${params.toString()}`);
     const data = await res.json();
     setSales(data.sales);
     setTotalPages(data.totalPages);
-  }, [page, search]);
+  }, [page, search, sortBy, sortDir]);
 
   useEffect(() => {
     loadLookups();
@@ -102,14 +104,38 @@ export default function SalePage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-lg font-semibold">Sale</h1>
-        <SearchInput
-          value={search}
-          onChange={(v) => {
-            setPage(1);
-            setSearch(v);
-          }}
-          placeholder="Search party or item…"
-        />
+        <div className="flex items-center gap-2">
+          <select
+            value={sortBy}
+            onChange={(e) => {
+              setPage(1);
+              setSortBy(e.target.value as "date" | "billNumber");
+            }}
+            className="rounded-md border border-black/15 px-2 py-1.5 text-sm dark:border-white/15 dark:bg-transparent"
+          >
+            <option value="date">Sort: Date</option>
+            <option value="billNumber">Sort: Bill #</option>
+          </select>
+          <button
+            type="button"
+            onClick={() => {
+              setPage(1);
+              setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+            }}
+            title={sortDir === "desc" ? "Newest/highest first" : "Oldest/lowest first"}
+            className="rounded-md border border-black/15 px-2 py-1.5 text-sm dark:border-white/15 dark:bg-transparent"
+          >
+            {sortDir === "desc" ? "↓" : "↑"}
+          </button>
+          <SearchInput
+            value={search}
+            onChange={(v) => {
+              setPage(1);
+              setSearch(v);
+            }}
+            placeholder="Search party or item…"
+          />
+        </div>
       </div>
 
       <div ref={formRef}>
