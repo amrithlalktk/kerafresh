@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { formatBillNumber, formatCents } from "@/lib/money";
 import type {
   CombinedPayment,
@@ -63,8 +64,38 @@ export default function RecordPaymentForm({
   const [formError, setFormError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [billResultsRect, setBillResultsRect] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+  const billQueryInputRef = useRef<HTMLInputElement | null>(null);
 
   const editingId = editingPayment?.id ?? null;
+
+  useEffect(() => setMounted(true), []);
+
+  // The results list is portaled to <body> (see SuggestInput for why: Card's
+  // backdrop-blur creates a stacking context an absolutely-positioned list
+  // can't escape, so a later sibling Card paints over it regardless of
+  // z-index) — so its position has to be tracked manually instead of via CSS.
+  useEffect(() => {
+    if (billResults.length === 0) return;
+    function updatePosition() {
+      const el = billQueryInputRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setBillResultsRect({ top: r.bottom, left: r.left, width: r.width });
+    }
+    updatePosition();
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [billResults.length]);
 
   useEffect(() => {
     if (!editingPayment) return;
@@ -234,6 +265,7 @@ export default function RecordPaymentForm({
             {lockPartyId ? " for this party" : " by party or bill #"}
           </label>
           <input
+            ref={billQueryInputRef}
             value={billQuery}
             onChange={(e) => searchBills(e.target.value)}
             placeholder={
@@ -241,21 +273,33 @@ export default function RecordPaymentForm({
             }
             className={inputClass}
           />
-          {billResults.length > 0 && (
-            <ul className="absolute inset-x-0 top-full z-20 mt-1 rounded-md border border-black/10 bg-white py-1 text-sm shadow-lg dark:border-white/10 dark:bg-[#1e2231]">
-              {billResults.map((bill) => (
-                <li key={bill.id}>
-                  <button
-                    type="button"
-                    onClick={() => selectBill(bill)}
-                    className="block w-full px-3 py-1.5 text-left hover:bg-black/5 dark:hover:bg-white/10"
-                  >
-                    {billLabel(bill)}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          {mounted &&
+            billResults.length > 0 &&
+            billResultsRect &&
+            createPortal(
+              <ul
+                style={{
+                  position: "fixed",
+                  top: billResultsRect.top + 4,
+                  left: billResultsRect.left,
+                  width: billResultsRect.width,
+                }}
+                className="z-40 max-h-60 overflow-auto rounded-md border border-black/10 bg-white py-1 text-sm shadow-lg dark:border-white/10 dark:bg-[#1e2231]"
+              >
+                {billResults.map((bill) => (
+                  <li key={bill.id}>
+                    <button
+                      type="button"
+                      onClick={() => selectBill(bill)}
+                      className="block w-full px-3 py-1.5 text-left hover:bg-black/5 dark:hover:bg-white/10"
+                    >
+                      {billLabel(bill)}
+                    </button>
+                  </li>
+                ))}
+              </ul>,
+              document.body
+            )}
         </div>
       )}
 
