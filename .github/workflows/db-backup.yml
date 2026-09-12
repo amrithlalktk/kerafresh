@@ -1,0 +1,44 @@
+name: Daily database backup
+
+on:
+  schedule:
+    # 22:30 UTC = 4:00 AM IST (UTC+5:30) the next day. GitHub Actions cron
+    # only understands UTC — adjust this if your server isn't in IST.
+    - cron: "30 22 * * *"
+  # Lets you trigger a one-off backup manually from the Actions tab, e.g. to
+  # test this workflow or grab a backup right before a risky change.
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    # pg_dump needs to be at least as new as the server to fully understand
+    # its format — using a current Postgres image's client sidesteps any
+    # version mismatch with the pinned Postgres server your app deploys.
+    container:
+      image: postgres:17-alpine
+    steps:
+      - name: Dump database
+        env:
+          # The *unpooled* connection string (same one used as DIRECT_URL
+          # for `prisma migrate deploy`) — pg_dump needs a direct session,
+          # not one routed through a transaction-mode pooler.
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+        # postgres:17-alpine has no bash, only POSIX sh — the default shell
+        # GitHub Actions would otherwise try to use.
+        shell: sh
+        run: |
+          if [ -z "$DIRECT_URL" ]; then
+            echo "::error::DIRECT_URL secret is not set — add it in repo Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          pg_dump "$DIRECT_URL" --format=custom --file="kerafresh-backup-$(date -u +%F).dump"
+          # Fail loudly rather than silently uploading an empty/broken backup.
+          test -s "kerafresh-backup-$(date -u +%F).dump"
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kerafresh-backup-${{ github.run_id }}
+          path: kerafresh-backup-*.dump
+          retention-days: 7
