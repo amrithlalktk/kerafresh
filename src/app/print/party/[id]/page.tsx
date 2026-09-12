@@ -84,6 +84,7 @@ export default async function PrintPartyStatementPage({
         <div>
           <h1 className="text-xl font-semibold">{COMPANY.name}</h1>
           <p className="text-sm text-black/60">{COMPANY.address}</p>
+          <p className="text-sm text-black/60">GSTIN: {COMPANY.gstin}</p>
         </div>
         <div className="text-right">
           <p className="text-lg font-semibold">Party Statement</p>

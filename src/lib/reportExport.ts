@@ -35,6 +35,7 @@ export function downloadReportCsv({
   const preamble = [
     [COMPANY.name],
     [COMPANY.address],
+    [`GSTIN: ${COMPANY.gstin}`],
     [title],
     [`Generated on ${new Date().toLocaleString()} by ${generatedBy}`],
     [],
@@ -59,19 +60,34 @@ export function downloadReportPdf({
   generatedBy: string;
 }) {
   const doc = new jsPDF({ orientation: rows.length && header.length > 5 ? "landscape" : "portrait" });
+  const marginX = 14;
+  // The company address can run long enough to wrap — measure its actual
+  // wrapped line count instead of assuming a fixed number of lines, so
+  // everything below it (GSTIN, title, table) never overlaps it.
+  const maxWidth = doc.internal.pageSize.getWidth() - marginX * 2;
 
+  let y = 16;
   doc.setFontSize(14);
-  doc.text(COMPANY.name, 14, 16);
+  doc.text(COMPANY.name, marginX, y);
+  y += 6;
+
   doc.setFontSize(9);
-  doc.text(COMPANY.address, 14, 22);
+  const addressLines = doc.splitTextToSize(COMPANY.address, maxWidth);
+  doc.text(addressLines, marginX, y);
+  y += addressLines.length * 4.5 + 4;
+
+  doc.text(`GSTIN: ${COMPANY.gstin}`, marginX, y);
+  y += 8;
 
   doc.setFontSize(12);
-  doc.text(title, 14, 32);
+  doc.text(title, marginX, y);
+  y += 6;
   doc.setFontSize(8);
-  doc.text(`Generated on ${new Date().toLocaleString()} by ${generatedBy}`, 14, 38);
+  doc.text(`Generated on ${new Date().toLocaleString()} by ${generatedBy}`, marginX, y);
+  y += 5;
 
   autoTable(doc, {
-    startY: 43,
+    startY: y,
     head: [header],
     body: rows,
     styles: { fontSize: 8 },
