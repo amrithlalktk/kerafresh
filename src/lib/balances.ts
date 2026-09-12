@@ -1,7 +1,122 @@
 import { db } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 
 // Party/item balances are always computed at read time from Sale/Purchase
 // rows rather than stored, so they can never drift out of sync.
+
+// Applies as much of a party's currently-available advance credit as
+// possible against their OWN other outstanding bills of the same type,
+// oldest date first — so credit built up on one bill (e.g. an overpayment,
+// or a standalone advance payment) immediately reduces what's owed on
+// bills that already existed, not just a bill created after the fact. Must
+// run inside the same transaction that just created/changed the advance,
+// so it sees that change plus anything already sitting unapplied.
+export async function sweepAdvanceIntoOutstandingSales(
+  tx: Prisma.TransactionClient,
+  partyId: string
+) {
+  const [receivedTotal, paidTotal, advanceSourcedTotal] = await Promise.all([
+    tx.partyPayment.aggregate({
+      where: { partyId, direction: "RECEIVED" },
+      _sum: { amountCents: true },
+    }),
+    tx.partyPayment.aggregate({
+      where: { partyId, direction: "PAID" },
+      _sum: { amountCents: true },
+    }),
+    tx.salePayment.aggregate({
+      where: { source: "ADVANCE", sale: { partyId } },
+      _sum: { amountCents: true },
+    }),
+  ]);
+  let available = Math.max(
+    0,
+    (receivedTotal._sum.amountCents ?? 0) -
+      (paidTotal._sum.amountCents ?? 0) -
+      (advanceSourcedTotal._sum.amountCents ?? 0)
+  );
+  if (available <= 0) return;
+
+  const sales = await tx.sale.findMany({
+    where: { partyId },
+    orderBy: { date: "asc" },
+    select: { id: true, totalCents: true, paidCents: true },
+  });
+  for (const sale of sales) {
+    if (available <= 0) break;
+    const dueCents = sale.totalCents - sale.paidCents;
+    if (dueCents <= 0) continue;
+    const applyCents = Math.min(available, dueCents);
+    await tx.salePayment.create({
+      data: {
+        saleId: sale.id,
+        date: new Date(),
+        amountCents: applyCents,
+        source: "ADVANCE",
+        notes: "Settled from advance credit",
+      },
+    });
+    await tx.sale.update({
+      where: { id: sale.id },
+      data: { paidCents: sale.paidCents + applyCents },
+    });
+    available -= applyCents;
+  }
+}
+
+// Mirror of sweepAdvanceIntoOutstandingSales for the Purchase side.
+export async function sweepAdvanceIntoOutstandingPurchases(
+  tx: Prisma.TransactionClient,
+  partyId: string
+) {
+  const [paidTotal, receivedTotal, advanceSourcedTotal] = await Promise.all([
+    tx.partyPayment.aggregate({
+      where: { partyId, direction: "PAID" },
+      _sum: { amountCents: true },
+    }),
+    tx.partyPayment.aggregate({
+      where: { partyId, direction: "RECEIVED" },
+      _sum: { amountCents: true },
+    }),
+    tx.purchasePayment.aggregate({
+      where: { source: "ADVANCE", purchase: { partyId } },
+      _sum: { amountCents: true },
+    }),
+  ]);
+  let available = Math.max(
+    0,
+    (paidTotal._sum.amountCents ?? 0) -
+      (receivedTotal._sum.amountCents ?? 0) -
+      (advanceSourcedTotal._sum.amountCents ?? 0)
+  );
+  if (available <= 0) return;
+
+  const purchases = await tx.purchase.findMany({
+    where: { partyId },
+    orderBy: { date: "asc" },
+    select: { id: true, totalCents: true, paidCents: true },
+  });
+  for (const purchase of purchases) {
+    if (available <= 0) break;
+    const dueCents = purchase.totalCents - purchase.paidCents;
+    if (dueCents <= 0) continue;
+    const applyCents = Math.min(available, dueCents);
+    await tx.purchasePayment.create({
+      data: {
+        purchaseId: purchase.id,
+        date: new Date(),
+        amountCents: applyCents,
+        source: "ADVANCE",
+        notes: "Settled from advance credit",
+      },
+    });
+    await tx.purchase.update({
+      where: { id: purchase.id },
+      data: { paidCents: purchase.paidCents + applyCents },
+    });
+    available -= applyCents;
+  }
+}
 
 // SalePayments settled against a party's existing advance credit (source:
 // "ADVANCE") rather than fresh cash — see PartyPayment and SalePayment.source.

@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { isAdminRole } from "@/lib/types";
 import { paymentSchema } from "@/lib/validation";
 import { formatBillNumber, toCents } from "@/lib/money";
+import { sweepAdvanceIntoOutstandingSales } from "@/lib/balances";
 
 async function canModify(userId: string, isAdmin: boolean, saleId: string) {
   if (isAdmin) return true;
@@ -35,61 +36,80 @@ export async function POST(
   const { date, amount, paymentMethod, notes } = parsed.data;
   const amountCents = toCents(amount);
 
-  const sale = await db.$transaction(async (tx) => {
-    const existing = await tx.sale.findUniqueOrThrow({
-      where: { id },
-      select: { billNumber: true, totalCents: true, paidCents: true, partyId: true },
-    });
-    const dueCents = Math.max(0, existing.totalCents - existing.paidCents);
-    // Anything paid beyond what's actually due on this bill becomes advance
-    // credit for the party instead of over-paying the bill itself, so it's
-    // automatically available to settle their next sale (see
-    // getAvailableAdvanceForSalesMap) — only possible when there's a party to
-    // attribute it to; a cash sale with no party keeps the old behavior.
-    const billPortionCents = existing.partyId ? Math.min(amountCents, dueCents) : amountCents;
-    const excessCents = amountCents - billPortionCents;
+  try {
+    const sale = await db.$transaction(async (tx) => {
+      const existing = await tx.sale.findUniqueOrThrow({
+        where: { id },
+        select: { billNumber: true, totalCents: true, paidCents: true, partyId: true },
+      });
+      const dueCents = Math.max(0, existing.totalCents - existing.paidCents);
+      // Anything paid beyond what's actually due on this bill becomes advance
+      // credit for the party instead of over-paying the bill itself, so it's
+      // automatically available to settle their next sale (see
+      // getAvailableAdvanceForSalesMap) — only possible when there's a party to
+      // attribute it to; a cash sale with no party keeps the old behavior.
+      const billPortionCents = existing.partyId ? Math.min(amountCents, dueCents) : amountCents;
+      const excessCents = amountCents - billPortionCents;
 
-    if (billPortionCents > 0) {
-      await tx.salePayment.create({
-        data: {
-          saleId: id,
-          date: new Date(date),
-          amountCents: billPortionCents,
-          paymentMethod,
-          notes: notes || null,
+      if (billPortionCents > 0) {
+        await tx.salePayment.create({
+          data: {
+            saleId: id,
+            date: new Date(date),
+            amountCents: billPortionCents,
+            paymentMethod,
+            notes: notes || null,
+          },
+        });
+      }
+      if (excessCents > 0 && existing.partyId) {
+        await tx.partyPayment.create({
+          data: {
+            partyId: existing.partyId,
+            date: new Date(date),
+            direction: "RECEIVED",
+            amountCents: excessCents,
+            paymentMethod,
+            notes: `Excess payment on Sale #${formatBillNumber(existing.billNumber)} — added as advance credit`,
+            userId: session.userId,
+          },
+        });
+      }
+
+      const total = await tx.salePayment.aggregate({
+        where: { saleId: id },
+        _sum: { amountCents: true },
+      });
+      await tx.sale.update({
+        where: { id },
+        data: { paidCents: total._sum.amountCents ?? 0 },
+      });
+
+      // Any advance credit the party now has — the excess above, or credit
+      // already sitting unapplied from before — immediately reduces their
+      // OTHER outstanding sales too, not just bills created from here on.
+      if (existing.partyId) {
+        await sweepAdvanceIntoOutstandingSales(tx, existing.partyId);
+      }
+
+      return tx.sale.findUniqueOrThrow({
+        where: { id },
+        include: {
+          party: { select: { name: true } },
+          items: { include: { item: { select: { name: true, unit: true } } } },
+          charges: true,
+          payments: { orderBy: { date: "asc" } },
+          recordedBy: { select: { name: true } },
         },
       });
-    }
-    if (excessCents > 0 && existing.partyId) {
-      await tx.partyPayment.create({
-        data: {
-          partyId: existing.partyId,
-          date: new Date(date),
-          direction: "RECEIVED",
-          amountCents: excessCents,
-          paymentMethod,
-          notes: `Excess payment on Sale #${formatBillNumber(existing.billNumber)} — added as advance credit`,
-          userId: session.userId,
-        },
-      });
-    }
-
-    const total = await tx.salePayment.aggregate({
-      where: { saleId: id },
-      _sum: { amountCents: true },
     });
-    return tx.sale.update({
-      where: { id },
-      data: { paidCents: total._sum.amountCents ?? 0 },
-      include: {
-        party: { select: { name: true } },
-        items: { include: { item: { select: { name: true, unit: true } } } },
-        charges: true,
-        payments: { orderBy: { date: "asc" } },
-        recordedBy: { select: { name: true } },
-      },
-    });
-  });
 
-  return NextResponse.json(sale);
+    return NextResponse.json(sale);
+  } catch (err) {
+    console.error("Failed to record sale payment", err);
+    return NextResponse.json(
+      { error: "Could not record this payment. Try logging out and back in, then retry." },
+      { status: 500 }
+    );
+  }
 }

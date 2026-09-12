@@ -4,6 +4,10 @@ import { getSession } from "@/lib/auth";
 import { isAdminRole } from "@/lib/types";
 import { partyPaymentSchema } from "@/lib/validation";
 import { toCents } from "@/lib/money";
+import {
+  sweepAdvanceIntoOutstandingPurchases,
+  sweepAdvanceIntoOutstandingSales,
+} from "@/lib/balances";
 
 export async function PATCH(
   request: Request,
@@ -23,18 +27,39 @@ export async function PATCH(
   }
 
   const { date, direction, amount, paymentMethod, notes } = parsed.data;
-  const payment = await db.partyPayment.update({
-    where: { id: paymentId },
-    data: {
-      date: new Date(date),
-      direction,
-      amountCents: toCents(amount),
-      paymentMethod,
-      notes: notes || null,
-    },
-  });
 
-  return NextResponse.json(payment);
+  try {
+    const payment = await db.$transaction(async (tx) => {
+      const updated = await tx.partyPayment.update({
+        where: { id: paymentId },
+        data: {
+          date: new Date(date),
+          direction,
+          amountCents: toCents(amount),
+          paymentMethod,
+          notes: notes || null,
+        },
+      });
+
+      // Re-run in case the edit freed up more credit (or changed direction),
+      // so it immediately reduces the party's other outstanding bills.
+      if (direction === "RECEIVED") {
+        await sweepAdvanceIntoOutstandingSales(tx, updated.partyId);
+      } else {
+        await sweepAdvanceIntoOutstandingPurchases(tx, updated.partyId);
+      }
+
+      return updated;
+    });
+
+    return NextResponse.json(payment);
+  } catch (err) {
+    console.error("Failed to update advance payment", err);
+    return NextResponse.json(
+      { error: "Could not save this change. Try logging out and back in, then retry." },
+      { status: 500 }
+    );
+  }
 }
 
 export async function DELETE(

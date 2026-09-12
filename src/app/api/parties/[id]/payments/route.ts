@@ -3,6 +3,10 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { partyPaymentSchema } from "@/lib/validation";
 import { toCents } from "@/lib/money";
+import {
+  sweepAdvanceIntoOutstandingPurchases,
+  sweepAdvanceIntoOutstandingSales,
+} from "@/lib/balances";
 
 export async function GET(
   _request: Request,
@@ -37,17 +41,38 @@ export async function POST(
   }
 
   const { date, direction, amount, paymentMethod, notes } = parsed.data;
-  const payment = await db.partyPayment.create({
-    data: {
-      partyId: id,
-      date: new Date(date),
-      direction,
-      amountCents: toCents(amount),
-      paymentMethod,
-      notes: notes || null,
-      userId: session.userId,
-    },
-  });
 
-  return NextResponse.json(payment);
+  try {
+    const payment = await db.$transaction(async (tx) => {
+      const created = await tx.partyPayment.create({
+        data: {
+          partyId: id,
+          date: new Date(date),
+          direction,
+          amountCents: toCents(amount),
+          paymentMethod,
+          notes: notes || null,
+          userId: session.userId,
+        },
+      });
+
+      // Immediately apply this (plus anything already unapplied) against the
+      // party's existing outstanding bills, not just a bill created later.
+      if (direction === "RECEIVED") {
+        await sweepAdvanceIntoOutstandingSales(tx, id);
+      } else {
+        await sweepAdvanceIntoOutstandingPurchases(tx, id);
+      }
+
+      return created;
+    });
+
+    return NextResponse.json(payment);
+  } catch (err) {
+    console.error("Failed to record advance payment", err);
+    return NextResponse.json(
+      { error: "Could not record this payment. Try logging out and back in, then retry." },
+      { status: 500 }
+    );
+  }
 }
