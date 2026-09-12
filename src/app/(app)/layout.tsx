@@ -33,7 +33,7 @@ export default async function AppLayout({
         <div className="pointer-events-none absolute bottom-0 left-1/3 -z-10 h-72 w-72 rounded-full bg-[#0ca30c]/10 blur-3xl print:hidden" />
         <Watermark />
         <TopBar />
-        <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-6 print:overflow-visible print:px-0">
+        <main className="mx-auto w-full flex-1 px-6 py-6 print:overflow-visible print:px-0">
           {children}
         </main>
       </div>

@@ -144,7 +144,7 @@ export default function PurchasePage() {
           <table className="w-full table-fixed text-sm">
             <thead className="text-left text-black/60 dark:text-white/60">
               <tr>
-                <th className="w-16 px-2 py-3">Bill #</th>
+                <th className="w-14 px-2 py-3">Bill #</th>
                 <th className="w-32 px-2 py-3">Date</th>
                 <th className="w-36 px-2 py-3">Party</th>
                 <th className="w-36 px-2 py-3">Item</th>
@@ -152,8 +152,8 @@ export default function PurchasePage() {
                 <th className="w-32 px-2 py-3">Price</th>
                 <th className="w-16 px-2 py-3 text-center">FFA</th>
                 <th className="w-16 px-2 py-3 text-center">Tax %</th>
-                <th className="w-36 px-2 py-3 text-right">Total</th>
-                <th className="w-40 px-2 py-3"></th>
+                <th className="w-32 px-2 py-3 text-right">Total</th>
+                <th className="w-56 px-2 py-3"></th>
               </tr>
             </thead>
             <tbody>
@@ -220,7 +220,7 @@ export default function PurchasePage() {
                     <td className="px-2 py-3 text-right whitespace-nowrap">
                       {formatCents(purchase.totalCents)}
                     </td>
-                    <td className="px-2 py-3 text-right">
+                    <td className="px-2 py-3 text-right whitespace-nowrap">
                       <a
                         href={`/print/purchase/${purchase.id}`}
                         target="_blank"
