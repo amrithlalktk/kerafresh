@@ -7,10 +7,14 @@ import SummaryCard from "@/components/SummaryCard";
 import { downloadReportCsv, downloadReportPdf } from "@/lib/reportExport";
 import type { Expense, Purchase, Sale } from "@/lib/types";
 
+type DayRowItem = { name: string; quantity: number; priceCents: number };
+
 type DayRow = {
   type: "Sale" | "Purchase" | "Expense";
   ref: string;
   partyOrCategory: string;
+  // Empty for Expense rows — those show `detail` (the description) instead.
+  items: DayRowItem[];
   detail: string;
   amountCents: number;
 };
@@ -19,13 +23,15 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-const HEADER = ["Type", "Reference", "Party / Category", "Detail", "Amount"];
+const HEADER = ["Type", "Reference", "Party / Category", "Item", "KG", "Price", "Amount"];
 function csvRows(rows: DayRow[]) {
   return rows.map((r) => [
     r.type,
     r.ref,
     r.partyOrCategory,
-    r.detail,
+    r.items.length > 0 ? r.items.map((i) => i.name).join("; ") : r.detail,
+    r.items.map((i) => i.quantity).join("; "),
+    r.items.map((i) => (i.priceCents / 100).toFixed(2)).join("; "),
     (r.amountCents / 100).toFixed(2),
   ]);
 }
@@ -58,24 +64,31 @@ export default function DayBookPage() {
         type: "Sale",
         ref: `#${formatBillNumber(s.billNumber)}`,
         partyOrCategory: s.party?.name ?? "Cash sale",
-        detail: s.items
-          .map((l) => `${l.item.name}: ${l.quantity} kg @ ${formatCents(l.priceCents)}`)
-          .join(", "),
+        items: s.items.map((l) => ({
+          name: l.item.name,
+          quantity: l.quantity,
+          priceCents: l.priceCents,
+        })),
+        detail: "",
         amountCents: s.totalCents,
       })),
       ...purchases.map((p): DayRow => ({
         type: "Purchase",
         ref: `#${formatBillNumber(p.billNumber)}`,
         partyOrCategory: p.party?.name ?? "—",
-        detail: p.items
-          .map((l) => `${l.item.name}: ${l.quantity} kg @ ${formatCents(l.priceCents)}`)
-          .join(", "),
+        items: p.items.map((l) => ({
+          name: l.item.name,
+          quantity: l.quantity,
+          priceCents: l.priceCents,
+        })),
+        detail: "",
         amountCents: p.totalCents,
       })),
       ...expenses.map((e): DayRow => ({
         type: "Expense",
         ref: "—",
         partyOrCategory: e.category.name,
+        items: [],
         detail: e.description,
         amountCents: e.amountCents,
       })),
@@ -170,7 +183,9 @@ export default function DayBookPage() {
                 <th className="px-4 py-3">Type</th>
                 <th className="px-4 py-3">Reference</th>
                 <th className="px-4 py-3">Party / Category</th>
-                <th className="px-4 py-3">Detail</th>
+                <th className="px-4 py-3">Item</th>
+                <th className="px-4 py-3 text-center">KG</th>
+                <th className="px-4 py-3">Price</th>
                 <th className="px-4 py-3 text-right">Amount</th>
               </tr>
             </thead>
@@ -192,7 +207,35 @@ export default function DayBookPage() {
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">{r.ref}</td>
                   <td className="px-4 py-3">{r.partyOrCategory}</td>
-                  <td className="px-4 py-3">{r.detail}</td>
+                  {r.items.length > 0 ? (
+                    <>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-0.5">
+                          {r.items.map((i, itemIndex) => (
+                            <span key={itemIndex}>{i.name}</span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex flex-col gap-0.5">
+                          {r.items.map((i, itemIndex) => (
+                            <span key={itemIndex}>{i.quantity}</span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-0.5">
+                          {r.items.map((i, itemIndex) => (
+                            <span key={itemIndex}>{formatCents(i.priceCents)}</span>
+                          ))}
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <td className="px-4 py-3" colSpan={3}>
+                      {r.detail}
+                    </td>
+                  )}
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     {formatCents(r.amountCents)}
                   </td>
@@ -200,7 +243,7 @@ export default function DayBookPage() {
               ))}
               {!loading && rows.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-black/50 dark:text-white/50">
+                  <td colSpan={7} className="px-4 py-6 text-center text-black/50 dark:text-white/50">
                     Nothing recorded on this day.
                   </td>
                 </tr>

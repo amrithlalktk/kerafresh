@@ -77,9 +77,11 @@ export default function SalesPurchasesReportPage() {
         billNumber: s.billNumber,
         date: s.date,
         partyName: s.party?.name ?? "Cash sale",
-        itemsLabel: s.items
-          .map((l) => `${l.item.name}: ${l.quantity} kg @ ${formatCents(l.priceCents)}`)
-          .join(", "),
+        items: s.items.map((l) => ({
+          name: l.item.name,
+          quantity: l.quantity,
+          priceCents: l.priceCents,
+        })),
         totalCents: s.totalCents,
         paidCents: s.paidCents,
         taxCents: s.items.reduce((sum, l) => sum + l.taxCents, 0),
@@ -89,9 +91,11 @@ export default function SalesPurchasesReportPage() {
         billNumber: p.billNumber,
         date: p.date,
         partyName: p.party?.name ?? "—",
-        itemsLabel: p.items
-          .map((l) => `${l.item.name}: ${l.quantity} kg @ ${formatCents(l.priceCents)}`)
-          .join(", "),
+        items: p.items.map((l) => ({
+          name: l.item.name,
+          quantity: l.quantity,
+          priceCents: l.priceCents,
+        })),
         totalCents: p.totalCents,
         paidCents: p.paidCents,
         taxCents: p.items.reduce((sum, l) => sum + l.taxCents, 0),
@@ -351,7 +355,9 @@ export default function SalesPurchasesReportPage() {
                   <th className="px-4 py-3">Bill #</th>
                   <th className="px-4 py-3">Date</th>
                   <th className="px-4 py-3">Party</th>
-                  <th className="px-4 py-3">Items</th>
+                  <th className="px-4 py-3">Item</th>
+                  <th className="px-4 py-3 text-center">KG</th>
+                  <th className="px-4 py-3">Price</th>
                   <th className="px-4 py-3 text-right">Total</th>
                   <th className="px-4 py-3 text-right">Balance</th>
                 </tr>
@@ -369,7 +375,27 @@ export default function SalesPurchasesReportPage() {
                       <td className="px-4 py-3 whitespace-nowrap">#{formatBillNumber(r.billNumber)}</td>
                       <td className="px-4 py-3 whitespace-nowrap">{formatDate(r.date)}</td>
                       <td className="px-4 py-3">{r.partyName}</td>
-                      <td className="px-4 py-3">{r.itemsLabel}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-0.5">
+                          {r.items.map((i, itemIndex) => (
+                            <span key={itemIndex}>{i.name}</span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex flex-col gap-0.5">
+                          {r.items.map((i, itemIndex) => (
+                            <span key={itemIndex}>{i.quantity}</span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-0.5">
+                          {r.items.map((i, itemIndex) => (
+                            <span key={itemIndex}>{formatCents(i.priceCents)}</span>
+                          ))}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
                         {formatCents(r.totalCents)}
                       </td>
@@ -385,7 +411,7 @@ export default function SalesPurchasesReportPage() {
                 })}
                 {!txLoading && txRows.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-6 text-center text-black/50 dark:text-white/50">
+                    <td colSpan={9} className="px-4 py-6 text-center text-black/50 dark:text-white/50">
                       No sales or purchases match these filters.
                     </td>
                   </tr>

@@ -4,12 +4,13 @@ import { formatDate } from "@/lib/date";
 import type { Expense } from "@/lib/types";
 
 export type TxType = "SALE" | "PURCHASE";
+export type TxRowItem = { name: string; quantity: number; priceCents: number };
 export type TxRow = {
   type: TxType;
   billNumber: number;
   date: string;
   partyName: string;
-  itemsLabel: string;
+  items: TxRowItem[];
   totalCents: number;
   paidCents: number;
   taxCents: number;
@@ -73,14 +74,27 @@ export function expenseRows(expenses: Expense[]) {
   ]);
 }
 
-export const TX_HEADER = ["Type", "Bill #", "Date", "Party", "Items", "Total", "Paid", "Balance"];
+export const TX_HEADER = [
+  "Type",
+  "Bill #",
+  "Date",
+  "Party",
+  "Item",
+  "KG",
+  "Price",
+  "Total",
+  "Paid",
+  "Balance",
+];
 export function txCsvRows(rows: TxRow[]) {
   return rows.map((r) => [
     r.type,
     formatBillNumber(r.billNumber),
     formatDate(r.date),
     r.partyName,
-    r.itemsLabel,
+    r.items.map((i) => i.name).join("; "),
+    r.items.map((i) => i.quantity).join("; "),
+    r.items.map((i) => (i.priceCents / 100).toFixed(2)).join("; "),
     (r.totalCents / 100).toFixed(2),
     (r.paidCents / 100).toFixed(2),
     ((r.totalCents - r.paidCents) / 100).toFixed(2),

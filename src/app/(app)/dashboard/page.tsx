@@ -384,40 +384,66 @@ export default async function DashboardPage() {
             {todayPurchases.length === 0 ? (
               <p className="text-sm text-black/50 dark:text-white/50">No purchases today.</p>
             ) : (
-              <ul className="flex flex-col gap-1.5 text-sm">
-                {todayPurchases.map((purchase) => {
-                  const status = paidStatus(purchase.totalCents, purchase.paidCents);
-                  return (
-                    <li
-                      key={purchase.id}
-                      className={`flex items-center justify-between rounded-lg px-3 py-2 ${STATUS_ROW_BG[status]}`}
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="h-1.5 w-1.5 shrink-0 rounded-full"
-                            style={{ background: STATUS_DOT[status] }}
-                          />
-                          <span className="truncate font-medium">
-                            {purchase.party?.name ?? "No party"}
-                          </span>
-                          <span className="shrink-0 text-xs text-black/50 dark:text-white/50">
-                            {STATUS_LABEL[status]}
-                          </span>
-                        </div>
-                        <p className="truncate pl-3.5 text-xs text-black/50 dark:text-white/50">
-                          {purchase.items
-                            .map((l) => `${l.item.name}: ${l.quantity} kg @ ${formatCents(l.priceCents)}`)
-                            .join(", ")}
-                        </p>
-                      </div>
-                      <span className="shrink-0 pl-3 font-medium">
-                        {formatCents(purchase.totalCents)}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-left text-black/60 dark:text-white/60">
+                    <tr>
+                      <th className="py-1.5 pr-2">Party</th>
+                      <th className="py-1.5 pr-2">Item</th>
+                      <th className="py-1.5 pr-2 text-center">KG</th>
+                      <th className="py-1.5 pr-2">Rate</th>
+                      <th className="py-1.5 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {todayPurchases.map((purchase) => {
+                      const status = paidStatus(purchase.totalCents, purchase.paidCents);
+                      return (
+                        <tr key={purchase.id} className={STATUS_ROW_BG[status]}>
+                          <td className="py-2 pr-2">
+                            <span className="flex items-center gap-2">
+                              <span
+                                className="h-1.5 w-1.5 shrink-0 rounded-full"
+                                style={{ background: STATUS_DOT[status] }}
+                              />
+                              <span className="truncate font-medium">
+                                {purchase.party?.name ?? "No party"}
+                              </span>
+                            </span>
+                            <span className="block pl-3.5 text-xs text-black/50 dark:text-white/50">
+                              {STATUS_LABEL[status]}
+                            </span>
+                          </td>
+                          <td className="py-2 pr-2">
+                            <div className="flex flex-col gap-0.5">
+                              {purchase.items.map((l) => (
+                                <span key={l.id}>{l.item.name}</span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="py-2 pr-2 text-center">
+                            <div className="flex flex-col gap-0.5">
+                              {purchase.items.map((l) => (
+                                <span key={l.id}>{l.quantity}</span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="py-2 pr-2">
+                            <div className="flex flex-col gap-0.5">
+                              {purchase.items.map((l) => (
+                                <span key={l.id}>{formatCents(l.priceCents)}</span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="py-2 text-right font-medium">
+                            {formatCents(purchase.totalCents)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </Card>
         </div>
