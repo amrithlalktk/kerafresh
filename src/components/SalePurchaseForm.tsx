@@ -277,8 +277,8 @@ export default function SalePurchaseForm({
                     <input
                       type="number"
                       required
-                      min="1"
-                      step="1"
+                      min="0.01"
+                      step="0.01"
                       placeholder="Qty"
                       value={line.quantity}
                       onChange={(e) => updateLine(index, { quantity: e.target.value })}

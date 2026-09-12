@@ -48,7 +48,9 @@ export async function PATCH(
   const { date, partyId, items, charges, notes } = parsed.data;
   const lineData = items.map((line) => {
     const priceCents = toCents(line.price);
-    const lineTotalCents = priceCents * line.quantity;
+    // Quantity is in KG and can be fractional (e.g. 1.5) — round to whole
+    // cents since lineTotalCents is stored as an integer.
+    const lineTotalCents = Math.round(priceCents * line.quantity);
     const taxCents = Math.round((lineTotalCents * line.taxPercent) / 100);
     return {
       itemId: line.itemId,

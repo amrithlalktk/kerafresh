@@ -66,7 +66,9 @@ export const chargeTypeSchema = z.object({
 
 const saleLineSchema = z.object({
   itemId: z.string().min(1, "Item is required"),
-  quantity: z.number().int().positive("Quantity must be at least 1"),
+  // Not integer-only — quantities are in KG, so fractional amounts like 1.5
+  // are normal, not an edge case.
+  quantity: z.number().positive("Quantity must be greater than 0"),
   price: z.number().nonnegative("Price can't be negative"),
   taxPercent: z.number().min(0, "Tax % can't be negative").max(100, "Tax % can't exceed 100").default(0),
   ffaGrade: z.enum(FFA_GRADES).optional().nullable(),

@@ -12,6 +12,12 @@ import SuggestInput from "@/components/SuggestInput";
 const cellInputClass =
   "min-w-0 rounded border border-black/15 bg-transparent px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-inset focus:ring-black/20 dark:border-white/15 dark:focus:ring-white/30";
 
+// Hides the native up/down spinner on <input type="number"> — Chrome/Safari
+// (::-webkit-*-spin-button) and Firefox (-moz-appearance) each need their
+// own override.
+const noSpinnerClass =
+  "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -255,12 +261,12 @@ export default function QuickEntryRow({
       <td className="p-1 align-top">
         <input
           type="number"
-          min="1"
-          step="1"
+          min="0.01"
+          step="0.01"
           value={qty}
           onChange={(e) => setQty(e.target.value)}
           onKeyDown={handleKeyDown}
-          className={`${cellInputClass} w-full text-center`}
+          className={`${cellInputClass} ${noSpinnerClass} w-full text-center`}
         />
       </td>
       <td className="p-1 align-top">
@@ -268,11 +274,10 @@ export default function QuickEntryRow({
           type="number"
           min="0"
           step="0.01"
-          placeholder="0.00"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
           onKeyDown={handleKeyDown}
-          className={`${cellInputClass} w-full`}
+          className={`${cellInputClass} ${noSpinnerClass} w-full`}
         />
       </td>
       <td className="p-1 align-top">

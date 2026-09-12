@@ -231,7 +231,8 @@ model SaleItem {
   saleId     String
   item       Item   @relation(fields: [itemId], references: [id])
   itemId     String
-  quantity   Int
+  // KG, can be fractional (e.g. 1.5).
+  quantity   Float
   priceCents Int
   // Pre-tax: quantity * priceCents.
   lineTotalCents Int
@@ -297,7 +298,8 @@ model PurchaseItem {
   purchaseId String
   item       Item     @relation(fields: [itemId], references: [id])
   itemId     String
-  quantity   Int
+  // KG, can be fractional (e.g. 1.5).
+  quantity   Float
   priceCents Int
   // Pre-tax: quantity * priceCents.
   lineTotalCents Int
