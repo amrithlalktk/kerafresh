@@ -176,7 +176,7 @@ export default function SalePage() {
                   </button>
                 </th>
                 <th className="w-36 px-4 py-3">Party</th>
-                <th className="px-4 py-3">Item</th>
+                <th className="w-36 px-4 py-3">Item</th>
                 <th className="w-20 px-4 py-3 text-center">Qty</th>
                 <th className="w-24 px-4 py-3">Price</th>
                 <th className="w-24 px-4 py-3 text-center">FFA</th>
@@ -220,24 +220,10 @@ export default function SalePage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">{sale.party?.name ?? "Cash sale"}</td>
-                    <td className="px-4 py-3" colSpan={5}>
+                    <td className="px-4 py-3">
                       <div className="flex flex-col gap-0.5">
                         {sale.items.map((l) => (
-                          <span key={l.id}>
-                            {l.item.name} × {l.quantity}
-                            {l.ffaGrade && (
-                              <span className="text-black/50 dark:text-white/50">
-                                {" "}
-                                ({l.ffaGrade})
-                              </span>
-                            )}
-                            {l.taxPercent > 0 && (
-                              <span className="text-black/50 dark:text-white/50">
-                                {" "}
-                                (+{l.taxPercent}% tax)
-                              </span>
-                            )}
-                          </span>
+                          <span key={l.id}>{l.item.name}</span>
                         ))}
                         {sale.charges.map((c) => (
                           <span key={c.id} className="text-black/50 dark:text-white/50">
@@ -251,6 +237,34 @@ export default function SalePage() {
                               {formatCents(p.amountCents)} settled from advance credit
                             </span>
                           ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex flex-col gap-0.5">
+                        {sale.items.map((l) => (
+                          <span key={l.id}>{l.quantity}</span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-0.5">
+                        {sale.items.map((l) => (
+                          <span key={l.id}>{formatCents(l.priceCents)}</span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex flex-col gap-0.5">
+                        {sale.items.map((l) => (
+                          <span key={l.id}>{l.ffaGrade || "—"}</span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex flex-col gap-0.5">
+                        {sale.items.map((l) => (
+                          <span key={l.id}>{l.taxPercent > 0 ? `${l.taxPercent}%` : "—"}</span>
+                        ))}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">

@@ -406,7 +406,9 @@ export default async function DashboardPage() {
                           </span>
                         </div>
                         <p className="truncate pl-3.5 text-xs text-black/50 dark:text-white/50">
-                          {purchase.items.map((l) => `${l.item.name} × ${l.quantity}`).join(", ")}
+                          {purchase.items
+                            .map((l) => `${l.item.name}: ${l.quantity} kg @ ${formatCents(l.priceCents)}`)
+                            .join(", ")}
                         </p>
                       </div>
                       <span className="shrink-0 pl-3 font-medium">

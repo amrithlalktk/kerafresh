@@ -77,7 +77,9 @@ export default function SalesPurchasesReportPage() {
         billNumber: s.billNumber,
         date: s.date,
         partyName: s.party?.name ?? "Cash sale",
-        itemsLabel: s.items.map((l) => `${l.item.name} × ${l.quantity}`).join(", "),
+        itemsLabel: s.items
+          .map((l) => `${l.item.name}: ${l.quantity} kg @ ${formatCents(l.priceCents)}`)
+          .join(", "),
         totalCents: s.totalCents,
         paidCents: s.paidCents,
         taxCents: s.items.reduce((sum, l) => sum + l.taxCents, 0),
@@ -87,7 +89,9 @@ export default function SalesPurchasesReportPage() {
         billNumber: p.billNumber,
         date: p.date,
         partyName: p.party?.name ?? "—",
-        itemsLabel: p.items.map((l) => `${l.item.name} × ${l.quantity}`).join(", "),
+        itemsLabel: p.items
+          .map((l) => `${l.item.name}: ${l.quantity} kg @ ${formatCents(l.priceCents)}`)
+          .join(", "),
         totalCents: p.totalCents,
         paidCents: p.paidCents,
         taxCents: p.items.reduce((sum, l) => sum + l.taxCents, 0),

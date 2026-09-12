@@ -58,14 +58,18 @@ export default function DayBookPage() {
         type: "Sale",
         ref: `#${formatBillNumber(s.billNumber)}`,
         partyOrCategory: s.party?.name ?? "Cash sale",
-        detail: s.items.map((l) => `${l.item.name} × ${l.quantity}`).join(", "),
+        detail: s.items
+          .map((l) => `${l.item.name}: ${l.quantity} kg @ ${formatCents(l.priceCents)}`)
+          .join(", "),
         amountCents: s.totalCents,
       })),
       ...purchases.map((p): DayRow => ({
         type: "Purchase",
         ref: `#${formatBillNumber(p.billNumber)}`,
         partyOrCategory: p.party?.name ?? "—",
-        detail: p.items.map((l) => `${l.item.name} × ${l.quantity}`).join(", "),
+        detail: p.items
+          .map((l) => `${l.item.name}: ${l.quantity} kg @ ${formatCents(l.priceCents)}`)
+          .join(", "),
         amountCents: p.totalCents,
       })),
       ...expenses.map((e): DayRow => ({
