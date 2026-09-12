@@ -90,6 +90,16 @@ export default function SalePage() {
     loadSales();
   }
 
+  function toggleSort(field: "date" | "billNumber") {
+    setPage(1);
+    if (sortBy === field) {
+      setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+    } else {
+      setSortBy(field);
+      setSortDir("desc");
+    }
+  }
+
   async function handleDelete(sale: Sale) {
     if (!confirm("Delete this sale? This can't be undone.")) return;
     const res = await fetch(`/api/sales/${sale.id}`, { method: "DELETE" });
@@ -104,38 +114,14 @@ export default function SalePage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-lg font-semibold">Sale</h1>
-        <div className="flex items-center gap-2">
-          <select
-            value={sortBy}
-            onChange={(e) => {
-              setPage(1);
-              setSortBy(e.target.value as "date" | "billNumber");
-            }}
-            className="rounded-md border border-black/15 px-2 py-1.5 text-sm dark:border-white/15 dark:bg-transparent"
-          >
-            <option value="date">Sort: Date</option>
-            <option value="billNumber">Sort: Bill #</option>
-          </select>
-          <button
-            type="button"
-            onClick={() => {
-              setPage(1);
-              setSortDir((d) => (d === "desc" ? "asc" : "desc"));
-            }}
-            title={sortDir === "desc" ? "Newest/highest first" : "Oldest/lowest first"}
-            className="rounded-md border border-black/15 px-2 py-1.5 text-sm dark:border-white/15 dark:bg-transparent"
-          >
-            {sortDir === "desc" ? "↓" : "↑"}
-          </button>
-          <SearchInput
-            value={search}
-            onChange={(v) => {
-              setPage(1);
-              setSearch(v);
-            }}
-            placeholder="Search party or item…"
-          />
-        </div>
+        <SearchInput
+          value={search}
+          onChange={(v) => {
+            setPage(1);
+            setSearch(v);
+          }}
+          placeholder="Search party or item…"
+        />
       </div>
 
       <div ref={formRef}>
@@ -171,8 +157,24 @@ export default function SalePage() {
           <table className="w-full table-fixed text-sm">
             <thead className="text-left text-black/60 dark:text-white/60">
               <tr>
-                <th className="w-20 px-4 py-3">Bill #</th>
-                <th className="w-32 px-4 py-3">Date</th>
+                <th className="w-20 px-4 py-3">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("billNumber")}
+                    className="flex items-center gap-0.5 hover:text-black/90 dark:hover:text-white/90"
+                  >
+                    Bill # {sortBy === "billNumber" && (sortDir === "desc" ? "↓" : "↑")}
+                  </button>
+                </th>
+                <th className="w-32 px-4 py-3">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("date")}
+                    className="flex items-center gap-0.5 hover:text-black/90 dark:hover:text-white/90"
+                  >
+                    Date {sortBy === "date" && (sortDir === "desc" ? "↓" : "↑")}
+                  </button>
+                </th>
                 <th className="w-36 px-4 py-3">Party</th>
                 <th className="px-4 py-3">Item</th>
                 <th className="w-20 px-4 py-3 text-center">Qty</th>
