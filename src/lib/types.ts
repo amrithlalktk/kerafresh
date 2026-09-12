@@ -85,6 +85,22 @@ export type PartyPayment = {
   notes: string | null;
 };
 
+// One row of GET /api/payments — a Sale/Purchase installment or a Party
+// advance, normalized to one shape so they can share a single list/table.
+export type CombinedPayment = {
+  id: string;
+  kind: "SALE" | "PURCHASE" | "ADVANCE";
+  date: string;
+  partyId: string | null;
+  partyName: string;
+  billNumber: number | null;
+  refId: string;
+  amountCents: number;
+  direction: PartyPaymentDirection | null;
+  paymentMethod: PaymentMethod;
+  notes: string | null;
+};
+
 export type Item = {
   id: string;
   name: string;
