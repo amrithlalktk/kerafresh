@@ -11,7 +11,7 @@ import type { Party, PartyPayment, Purchase, Sale } from "@/lib/types";
 import Card from "@/components/Card";
 import RecordPaymentForm from "@/components/RecordPaymentForm";
 
-const STATEMENT_HEADER = ["Date", "Type", "Reference", "Amount", "Balance"];
+const STATEMENT_HEADER = ["Date", "Type", "Reference", "Debit", "Credit", "Balance"];
 
 export default function PartyStatementPage() {
   const params = useParams<{ id: string }>();
@@ -76,14 +76,17 @@ export default function PartyStatementPage() {
   function statementRows() {
     const rows: string[][] = [];
     if (party!.openingBalanceCents !== 0) {
-      rows.push(["", "Opening balance", "", "", (party!.openingBalanceCents / 100).toFixed(2)]);
+      rows.push(["", "Opening balance", "", "", "", (party!.openingBalanceCents / 100).toFixed(2)]);
     }
     ledger.forEach((entry, index) => {
+      const debit = entry.amountCents > 0 ? (entry.amountCents / 100).toFixed(2) : "";
+      const credit = entry.amountCents < 0 ? (-entry.amountCents / 100).toFixed(2) : "";
       rows.push([
         formatDate(entry.date),
         entry.type,
         entry.note ? `${entry.ref} (${entry.note})` : entry.ref,
-        (entry.amountCents / 100).toFixed(2),
+        debit,
+        credit,
         (balances[index] / 100).toFixed(2),
       ]);
     });
@@ -189,7 +192,8 @@ export default function PartyStatementPage() {
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Type</th>
                 <th className="px-4 py-3">Reference</th>
-                <th className="px-4 py-3 text-right">Amount</th>
+                <th className="px-4 py-3 text-right">Debit</th>
+                <th className="px-4 py-3 text-right">Credit</th>
                 <th className="px-4 py-3 text-right">Balance</th>
               </tr>
             </thead>
@@ -199,7 +203,9 @@ export default function PartyStatementPage() {
                   <td className="px-4 py-3 text-black/50 dark:text-white/50" colSpan={3}>
                     Opening balance
                   </td>
-                  <td className="px-4 py-3 text-right text-black/50 dark:text-white/50">—</td>
+                  <td className="px-4 py-3 text-right text-black/50 dark:text-white/50" colSpan={2}>
+                    —
+                  </td>
                   <td className="px-4 py-3 text-right font-medium">
                     {formatCents(party.openingBalanceCents)}
                   </td>
@@ -218,20 +224,11 @@ export default function PartyStatementPage() {
                         </span>
                       )}
                     </td>
-                    <td
-                      className={`px-4 py-3 text-right whitespace-nowrap ${
-                        entry.amountCents > 0
-                          ? "text-[#0ca30c]"
-                          : entry.amountCents < 0
-                            ? "text-[#d03b3b]"
-                            : "text-black/40 dark:text-white/40"
-                      }`}
-                    >
-                      {entry.amountCents === 0
-                        ? "—"
-                        : `${entry.amountCents > 0 ? "+" : "-"}${formatCents(
-                            Math.abs(entry.amountCents)
-                          )}`}
+                    <td className="px-4 py-3 text-right whitespace-nowrap text-[#0ca30c]">
+                      {entry.amountCents > 0 ? formatCents(entry.amountCents) : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap text-[#d03b3b]">
+                      {entry.amountCents < 0 ? formatCents(-entry.amountCents) : "—"}
                     </td>
                     <td className="px-4 py-3 text-right font-medium whitespace-nowrap">
                       {formatCents(balances[index])}
@@ -241,7 +238,7 @@ export default function PartyStatementPage() {
               })}
               {ledger.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-black/50 dark:text-white/50">
+                  <td colSpan={6} className="px-4 py-6 text-center text-black/50 dark:text-white/50">
                     No sales, purchases, or advances recorded for this party yet.
                   </td>
                 </tr>

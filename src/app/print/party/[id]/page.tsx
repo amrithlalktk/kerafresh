@@ -103,7 +103,8 @@ export default async function PrintPartyStatementPage({
             <th className="py-2">Date</th>
             <th className="py-2">Type</th>
             <th className="py-2">Reference</th>
-            <th className="py-2 text-right">Amount</th>
+            <th className="py-2 text-right">Debit</th>
+            <th className="py-2 text-right">Credit</th>
             <th className="py-2 text-right">Balance</th>
           </tr>
         </thead>
@@ -113,7 +114,9 @@ export default async function PrintPartyStatementPage({
               <td className="py-2 text-black/50" colSpan={3}>
                 Opening balance
               </td>
-              <td className="py-2 text-right text-black/50">—</td>
+              <td className="py-2 text-right text-black/50" colSpan={2}>
+                —
+              </td>
               <td className="py-2 text-right font-medium">
                 {formatCents(party.openingBalanceCents)}
               </td>
@@ -128,16 +131,17 @@ export default async function PrintPartyStatementPage({
                 {entry.note && <span className="block text-xs text-black/50">{entry.note}</span>}
               </td>
               <td className="py-2 text-right">
-                {entry.amountCents === 0
-                  ? "—"
-                  : `${entry.amountCents > 0 ? "+" : "-"}${formatCents(Math.abs(entry.amountCents))}`}
+                {entry.amountCents > 0 ? formatCents(entry.amountCents) : "—"}
+              </td>
+              <td className="py-2 text-right">
+                {entry.amountCents < 0 ? formatCents(-entry.amountCents) : "—"}
               </td>
               <td className="py-2 text-right font-medium">{formatCents(balances[index])}</td>
             </tr>
           ))}
           {ledger.length === 0 && (
             <tr>
-              <td colSpan={5} className="py-6 text-center text-black/50">
+              <td colSpan={6} className="py-6 text-center text-black/50">
                 No sales, purchases, or advances recorded for this party yet.
               </td>
             </tr>
