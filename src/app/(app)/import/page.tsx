@@ -223,18 +223,13 @@ export default function ImportPage() {
     return data.id as string;
   }
 
-  async function resolveItemId(name: string, price: number): Promise<string> {
+  async function resolveItemId(name: string): Promise<string> {
     const match = items.find((i) => i.name.toLowerCase() === name.trim().toLowerCase());
     if (match) return match.id;
     const res = await fetch("/api/items", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: name.trim(),
-        unit: "pcs",
-        salePrice: entityType === "SALE" ? price : 0,
-        purchasePrice: entityType === "PURCHASE" ? price : 0,
-      }),
+      body: JSON.stringify({ name: name.trim(), unit: "pcs" }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? `Could not create item "${name}"`);
@@ -289,7 +284,7 @@ export default function ImportPage() {
           const r = row as SaleRow;
           const [partyId, itemId] = await Promise.all([
             resolvePartyId(r.partyName),
-            resolveItemId(r.itemName, r.price),
+            resolveItemId(r.itemName),
           ]);
           const apiBase = entityType === "SALE" ? "/api/sales" : "/api/purchases";
           const res = await fetch(apiBase, {

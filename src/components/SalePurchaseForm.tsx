@@ -111,11 +111,7 @@ export default function SalePurchaseForm({
   }
 
   function handleItemChange(index: number, itemId: string) {
-    const item = items.find((i) => i.id === itemId);
-    const price = item
-      ? ((mode === "SALE" ? item.salePriceCents : item.purchasePriceCents) / 100).toString()
-      : "";
-    updateLine(index, { itemId, price, ffaGrade: "" });
+    updateLine(index, { itemId, ffaGrade: "" });
   }
 
   function addLine() {

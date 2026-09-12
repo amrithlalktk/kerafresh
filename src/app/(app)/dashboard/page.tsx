@@ -5,6 +5,7 @@ import { formatCents } from "@/lib/money";
 import {
   getPartyBalanceMap,
   getItemStockMap,
+  getItemAverageCostMap,
   getOldestUnpaidSaleDateByParty,
   getOldestUnpaidPurchaseDateByParty,
 } from "@/lib/balances";
@@ -96,6 +97,7 @@ export default async function DashboardPage() {
     oldestUnpaidPurchaseByParty,
     items,
     stockDelta,
+    avgCost,
     saleCashSum,
     salebankSum,
     purchaseCashSum,
@@ -129,6 +131,7 @@ export default async function DashboardPage() {
     getOldestUnpaidPurchaseDateByParty(),
     db.item.findMany(),
     getItemStockMap(),
+    getItemAverageCostMap(),
     db.salePayment.aggregate({ where: { paymentMethod: "CASH" }, _sum: { amountCents: true } }),
     db.salePayment.aggregate({ where: { paymentMethod: "BANK" }, _sum: { amountCents: true } }),
     db.purchasePayment.aggregate({
@@ -202,7 +205,7 @@ export default async function DashboardPage() {
     currentStockQty: item.openingStockQty + (stockDelta.get(item.id) ?? 0),
   }));
   const stockValueCents = itemsWithStock.reduce(
-    (sum, item) => sum + item.currentStockQty * item.purchasePriceCents,
+    (sum, item) => sum + item.currentStockQty * (avgCost.get(item.id) ?? 0),
     0
   );
   const lowStockItems = itemsWithStock.filter(

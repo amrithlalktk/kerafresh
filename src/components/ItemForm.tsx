@@ -17,12 +17,6 @@ export default function ItemForm({
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [unit, setUnit] = useState(initial?.unit ?? "pcs");
-  const [salePrice, setSalePrice] = useState(
-    initial ? (initial.salePriceCents / 100).toString() : ""
-  );
-  const [purchasePrice, setPurchasePrice] = useState(
-    initial ? (initial.purchasePriceCents / 100).toString() : ""
-  );
   const [openingStockQty, setOpeningStockQty] = useState(
     initial ? String(initial.openingStockQty) : "0"
   );
@@ -44,8 +38,6 @@ export default function ItemForm({
         body: JSON.stringify({
           name,
           unit,
-          salePrice: Number(salePrice),
-          purchasePrice: Number(purchasePrice),
           openingStockQty: Number(openingStockQty || 0),
           lowStockThreshold: lowStockThreshold ? Number(lowStockThreshold) : null,
           ffaGraded,
@@ -78,32 +70,6 @@ export default function ItemForm({
         onChange={(e) => setUnit(e.target.value)}
         className={inputClass}
       />
-      <div className="grid grid-cols-2 gap-2">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-black/60 dark:text-white/60">Sale price (optional)</label>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="0"
-            value={salePrice}
-            onChange={(e) => setSalePrice(e.target.value)}
-            className={inputClass}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-black/60 dark:text-white/60">Purchase price (optional)</label>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="0"
-            value={purchasePrice}
-            onChange={(e) => setPurchasePrice(e.target.value)}
-            className={inputClass}
-          />
-        </div>
-      </div>
       <div className="grid grid-cols-2 gap-2">
         <div className="flex flex-col gap-1">
           <label className="text-xs text-black/60 dark:text-white/60">Opening stock</label>

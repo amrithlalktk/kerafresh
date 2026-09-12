@@ -50,8 +50,6 @@ export const partySchema = z.object({
 export const itemSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   unit: z.string().trim().min(1).default("pcs"),
-  salePrice: z.number().nonnegative("Sale price can't be negative").default(0),
-  purchasePrice: z.number().nonnegative("Purchase price can't be negative").default(0),
   openingStockQty: z.number().int().nonnegative().default(0),
   lowStockThreshold: z.number().int().nonnegative().optional().nullable(),
   ffaGraded: z.boolean().default(false),

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { formatCents } from "@/lib/money";
 import { isAdminRole, type Item } from "@/lib/types";
 import { useViewerRole } from "@/lib/useViewerRole";
 import Modal from "@/components/Modal";
@@ -87,8 +86,6 @@ export default function ItemsPage() {
               <tr>
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Unit</th>
-                <th className="px-4 py-3 text-right">Sale price</th>
-                <th className="px-4 py-3 text-right">Purchase price</th>
                 <th className="px-4 py-3 text-right">Stock</th>
                 <th className="px-4 py-3"></th>
               </tr>
@@ -102,8 +99,6 @@ export default function ItemsPage() {
                   <tr key={item.id} className="border-t border-black/5 dark:border-white/5">
                     <td className="px-4 py-3">{item.name}</td>
                     <td className="px-4 py-3">{item.unit}</td>
-                    <td className="px-4 py-3 text-right">{formatCents(item.salePriceCents)}</td>
-                    <td className="px-4 py-3 text-right">{formatCents(item.purchasePriceCents)}</td>
                     <td className={`px-4 py-3 text-right ${low ? "text-[#d03b3b] font-medium" : ""}`}>
                       {item.currentStockQty} {item.unit}
                     </td>

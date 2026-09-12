@@ -53,7 +53,7 @@ export async function POST(
       data: { paidCents: total._sum.amountCents ?? 0 },
       include: {
         party: { select: { name: true } },
-        items: { include: { item: { select: { name: true, unit: true, purchasePriceCents: true } } } },
+        items: { include: { item: { select: { name: true, unit: true } } } },
         charges: true,
         payments: { orderBy: { date: "asc" } },
         recordedBy: { select: { name: true } },

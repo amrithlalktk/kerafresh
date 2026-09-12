@@ -155,8 +155,6 @@ model Item {
   id                 String         @id @default(cuid())
   name               String
   unit               String         @default("pcs")
-  salePriceCents     Int
-  purchasePriceCents Int
   openingStockQty    Int            @default(0)
   lowStockThreshold  Int?
   // When true, a Sale/Purchase line for this item asks for an FFA grade

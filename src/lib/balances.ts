@@ -167,3 +167,21 @@ export async function getItemStockMap() {
   }
   return deltaByItem;
 }
+
+// Items don't store a purchase price — it varies purchase to purchase — so
+// this is the cost basis profit reports use instead: total value purchased
+// divided by total quantity purchased, i.e. a running weighted average
+// across every PurchaseItem recorded for that item to date.
+export async function getItemAverageCostMap() {
+  const rows = await db.purchaseItem.groupBy({
+    by: ["itemId"],
+    _sum: { quantity: true, lineTotalCents: true },
+  });
+  const map = new Map<string, number>();
+  for (const row of rows) {
+    const qty = row._sum.quantity ?? 0;
+    const total = row._sum.lineTotalCents ?? 0;
+    if (qty > 0) map.set(row.itemId, Math.round(total / qty));
+  }
+  return map;
+}

@@ -79,14 +79,6 @@ export default function QuickEntryRow({
       ? Math.min(availableAdvanceCents, amountCents)
       : 0;
 
-  function fillPriceForItemName(name: string) {
-    const match = items.find((i) => i.name.toLowerCase() === name.trim().toLowerCase());
-    if (match && !price) {
-      const cents = mode === "SALE" ? match.salePriceCents : match.purchasePriceCents;
-      setPrice((cents / 100).toString());
-    }
-  }
-
   async function resolvePartyId(): Promise<string | null> {
     const trimmed = partyName.trim();
     if (!trimmed) return null;
@@ -107,16 +99,10 @@ export default function QuickEntryRow({
     const trimmed = itemName.trim();
     const match = items.find((i) => i.name.toLowerCase() === trimmed.toLowerCase());
     if (match) return match.id;
-    const priceNum = Number(price) || 0;
     const res = await fetch("/api/items", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: trimmed,
-        unit: "pcs",
-        salePrice: mode === "SALE" ? priceNum : 0,
-        purchasePrice: mode === "PURCHASE" ? priceNum : 0,
-      }),
+      body: JSON.stringify({ name: trimmed, unit: "pcs" }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? "Could not create item");
@@ -249,10 +235,8 @@ export default function QuickEntryRow({
           inputRef={itemInputRef}
           value={itemName}
           onChange={setItemName}
-          onSelect={fillPriceForItemName}
           options={items.map((i) => i.name)}
           placeholder="Item name"
-          onBlur={() => fillPriceForItemName(itemName)}
           onKeyDown={handleKeyDown}
           className={`${cellInputClass} w-full`}
         />

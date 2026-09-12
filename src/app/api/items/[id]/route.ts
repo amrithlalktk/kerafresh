@@ -3,8 +3,7 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { isAdminRole } from "@/lib/types";
 import { itemSchema } from "@/lib/validation";
-import { toCents } from "@/lib/money";
-import { getItemStockMap } from "@/lib/balances";
+import { getItemStockMap, getItemAverageCostMap } from "@/lib/balances";
 
 export async function PATCH(
   request: Request,
@@ -23,26 +22,24 @@ export async function PATCH(
     );
   }
 
-  const { name, unit, salePrice, purchasePrice, openingStockQty, lowStockThreshold, ffaGraded } =
-    parsed.data;
+  const { name, unit, openingStockQty, lowStockThreshold, ffaGraded } = parsed.data;
 
   const item = await db.item.update({
     where: { id },
     data: {
       name,
       unit,
-      salePriceCents: toCents(salePrice),
-      purchasePriceCents: toCents(purchasePrice),
       openingStockQty,
       lowStockThreshold: lowStockThreshold ?? null,
       ffaGraded,
     },
   });
 
-  const stockDelta = await getItemStockMap();
+  const [stockDelta, avgCost] = await Promise.all([getItemStockMap(), getItemAverageCostMap()]);
   return NextResponse.json({
     ...item,
     currentStockQty: item.openingStockQty + (stockDelta.get(item.id) ?? 0),
+    avgPurchaseCostCents: avgCost.get(item.id) ?? 0,
   });
 }
 

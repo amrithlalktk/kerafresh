@@ -105,12 +105,14 @@ export type Item = {
   id: string;
   name: string;
   unit: string;
-  salePriceCents: number;
-  purchasePriceCents: number;
   openingStockQty: number;
   lowStockThreshold: number | null;
   currentStockQty: number;
   ffaGraded: boolean;
+  // Weighted-average cost per unit across all purchases of this item to
+  // date (see getItemAverageCostMap) — not a stored/settable price, since
+  // items no longer have one; used as the cost basis for profit reports.
+  avgPurchaseCostCents: number;
 };
 
 // Additional charges (lorry rent, packing charge, coolie, etc.) added on
@@ -123,7 +125,7 @@ export type ChargeType = {
 export type SaleItemLine = {
   id: string;
   itemId: string;
-  item: { name: string; unit: string; purchasePriceCents: number };
+  item: { name: string; unit: string };
   quantity: number;
   priceCents: number;
   lineTotalCents: number;

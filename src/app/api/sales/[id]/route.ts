@@ -8,7 +8,7 @@ import type { Prisma } from "@prisma/client";
 
 const SALE_INCLUDE = {
   party: { select: { name: true } },
-  items: { include: { item: { select: { name: true, unit: true, purchasePriceCents: true } } } },
+  items: { include: { item: { select: { name: true, unit: true } } } },
   charges: true,
   payments: { orderBy: { date: "asc" } },
   recordedBy: { select: { name: true } },

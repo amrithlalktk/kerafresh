@@ -7,7 +7,7 @@ import Card from "@/components/Card";
 import SummaryCard from "@/components/SummaryCard";
 import { downloadReportCsv, downloadReportPdf } from "@/lib/reportExport";
 import { useDefaultDateRange } from "@/lib/reportHelpers";
-import type { Sale } from "@/lib/types";
+import type { Item, Sale } from "@/lib/types";
 
 type ProfitRow = {
   billNumber: number;
@@ -46,15 +46,20 @@ export default function BillWiseProfitPage() {
   const load = useCallback(async () => {
     if (!ready) return;
     setLoading(true);
-    const res = await fetch(`/api/sales?from=${from}&to=${to}&pageSize=1000`);
+    const [res, itemsRes] = await Promise.all([
+      fetch(`/api/sales?from=${from}&to=${to}&pageSize=1000`),
+      fetch("/api/items"),
+    ]);
     const data = await res.json();
     const sales = data.sales as Sale[];
+    const items = (await itemsRes.json()) as Item[];
+    const costByItemId = new Map(items.map((i) => [i.id, i.avgPurchaseCostCents]));
 
     const computed: ProfitRow[] = sales
       .map((s) => {
         const revenueCents = s.items.reduce((sum, l) => sum + l.lineTotalCents, 0);
         const costCents = s.items.reduce(
-          (sum, l) => sum + l.item.purchasePriceCents * l.quantity,
+          (sum, l) => sum + (costByItemId.get(l.itemId) ?? 0) * l.quantity,
           0
         );
         return {
@@ -106,8 +111,8 @@ export default function BillWiseProfitPage() {
       <div>
         <h1 className="text-lg font-semibold">Bill Wise Profit</h1>
         <p className="text-sm text-black/60 dark:text-white/60">
-          Profit per sale = sale price minus the item&apos;s current purchase price. Uses
-          today&apos;s cost, not the actual historical purchase price for that stock.
+          Profit per sale = sale price minus the item&apos;s average purchase cost to date, not
+          the actual historical purchase price for that specific stock.
         </p>
       </div>
 

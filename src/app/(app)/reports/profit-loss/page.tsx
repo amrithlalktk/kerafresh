@@ -5,7 +5,7 @@ import { formatCents } from "@/lib/money";
 import Card from "@/components/Card";
 import { downloadReportCsv, downloadReportPdf } from "@/lib/reportExport";
 import { useDefaultDateRange } from "@/lib/reportHelpers";
-import type { Sale } from "@/lib/types";
+import type { Item, Sale } from "@/lib/types";
 
 export default function ProfitLossPage() {
   const { from, to, setFrom, setTo, ready } = useDefaultDateRange();
@@ -24,18 +24,22 @@ export default function ProfitLossPage() {
   const load = useCallback(async () => {
     if (!ready) return;
     setLoading(true);
-    const [salesRes, expenseRes] = await Promise.all([
+    const [salesRes, expenseRes, itemsRes] = await Promise.all([
       fetch(`/api/sales?from=${from}&to=${to}&pageSize=1000`).then((r) => r.json()),
       fetch(`/api/reports?from=${from}&to=${to}`).then((r) => r.json()),
+      fetch("/api/items").then((r) => r.json()),
     ]);
     const sales = salesRes.sales as Sale[];
+    const items = itemsRes as Item[];
+    const costByItemId = new Map(items.map((i) => [i.id, i.avgPurchaseCostCents]));
     const revenue = sales.reduce(
       (sum, s) => sum + s.items.reduce((lsum, l) => lsum + l.lineTotalCents, 0),
       0
     );
     const cogs = sales.reduce(
       (sum, s) =>
-        sum + s.items.reduce((lsum, l) => lsum + l.item.purchasePriceCents * l.quantity, 0),
+        sum +
+        s.items.reduce((lsum, l) => lsum + (costByItemId.get(l.itemId) ?? 0) * l.quantity, 0),
       0
     );
     setRevenueCents(revenue);
@@ -76,8 +80,8 @@ export default function ProfitLossPage() {
       <div>
         <h1 className="text-lg font-semibold">Profit &amp; Loss</h1>
         <p className="text-sm text-black/60 dark:text-white/60">
-          A simplified statement — revenue and cost of goods sold come from Sales (using each
-          item&apos;s current purchase price as cost, not full accrual accounting).
+          A simplified statement — revenue comes from Sales, and cost of goods sold uses each
+          item&apos;s average purchase cost to date (not full accrual accounting).
         </p>
       </div>
 
