@@ -1,88 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { formatBillNumber, formatCents } from "@/lib/money";
+import { formatCents } from "@/lib/money";
 import { formatDate } from "@/lib/date";
+import { buildLedger, runningBalances } from "@/lib/partyLedger";
+import { downloadReportCsv, downloadReportPdf } from "@/lib/reportExport";
 import type { Party, PartyPayment, Purchase, Sale } from "@/lib/types";
 import Card from "@/components/Card";
+import RecordPaymentForm from "@/components/RecordPaymentForm";
 
-type LedgerEntry = {
-  date: string;
-  type: string;
-  ref: string;
-  note?: string;
-  amountCents: number;
-};
-
-// One combined, chronological account of every event that moved this
-// party's balance — sales/purchases (full invoice amount) plus each
-// payment against them, plus advances taken/given outside any invoice.
-// A Sale/Purchase's own paidCents already reflects payments regardless of
-// source, but a payment settled from advance credit (source: "ADVANCE")
-// contributes $0 here — that reduction already happened when the advance
-// itself was received/paid, so counting it again would double it (see
-// getPartyBalanceMap, which this mirrors exactly).
-function buildLedger(sales: Sale[], purchases: Purchase[], advances: PartyPayment[]) {
-  const entries: LedgerEntry[] = [];
-
-  for (const s of sales) {
-    entries.push({
-      date: s.date,
-      type: "Sale",
-      ref: `Sale #${formatBillNumber(s.billNumber)}`,
-      amountCents: s.totalCents,
-    });
-    for (const p of s.payments) {
-      if (p.source === "ADVANCE") {
-        entries.push({
-          date: p.date,
-          type: "Advance applied",
-          ref: `Sale #${formatBillNumber(s.billNumber)}`,
-          note: "settled from advance credit — no balance change",
-          amountCents: 0,
-        });
-      } else {
-        entries.push({
-          date: p.date,
-          type: "Payment received",
-          ref: `Sale #${formatBillNumber(s.billNumber)}`,
-          amountCents: -p.amountCents,
-        });
-      }
-    }
-  }
-
-  for (const p of purchases) {
-    entries.push({
-      date: p.date,
-      type: "Purchase",
-      ref: `Purchase #${formatBillNumber(p.billNumber)}`,
-      amountCents: -p.totalCents,
-    });
-    for (const pay of p.payments) {
-      entries.push({
-        date: pay.date,
-        type: "Payment made",
-        ref: `Purchase #${formatBillNumber(p.billNumber)}`,
-        amountCents: pay.amountCents,
-      });
-    }
-  }
-
-  for (const a of advances) {
-    entries.push({
-      date: a.date,
-      type: a.direction === "RECEIVED" ? "Advance received" : "Advance paid",
-      ref: a.notes || "—",
-      amountCents: a.direction === "RECEIVED" ? -a.amountCents : a.amountCents,
-    });
-  }
-
-  entries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  return entries;
-}
+const STATEMENT_HEADER = ["Date", "Type", "Reference", "Amount", "Balance"];
 
 export default function PartyStatementPage() {
   const params = useParams<{ id: string }>();
@@ -94,29 +23,37 @@ export default function PartyStatementPage() {
   const [advances, setAdvances] = useState<PartyPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [generatedBy, setGeneratedBy] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const [partyRes, salesRes, purchasesRes, advancesRes] = await Promise.all([
+      fetch(`/api/parties/${params.id}`),
+      fetch(`/api/sales?partyId=${params.id}&pageSize=1000`),
+      fetch(`/api/purchases?partyId=${params.id}&pageSize=1000`),
+      fetch(`/api/parties/${params.id}/payments`),
+    ]);
+    if (!partyRes.ok) {
+      setNotFound(true);
+      setLoading(false);
+      return;
+    }
+    setParty(await partyRes.json());
+    setSales((await salesRes.json()).sales);
+    setPurchases((await purchasesRes.json()).purchases);
+    setAdvances(await advancesRes.json());
+    setLoading(false);
+  }, [params.id]);
 
   useEffect(() => {
-    async function load() {
-      setLoading(true);
-      const [partyRes, salesRes, purchasesRes, advancesRes] = await Promise.all([
-        fetch(`/api/parties/${params.id}`),
-        fetch(`/api/sales?partyId=${params.id}&pageSize=1000`),
-        fetch(`/api/purchases?partyId=${params.id}&pageSize=1000`),
-        fetch(`/api/parties/${params.id}/payments`),
-      ]);
-      if (!partyRes.ok) {
-        setNotFound(true);
-        setLoading(false);
-        return;
-      }
-      setParty(await partyRes.json());
-      setSales((await salesRes.json()).sales);
-      setPurchases((await purchasesRes.json()).purchases);
-      setAdvances(await advancesRes.json());
-      setLoading(false);
-    }
     load();
-  }, [params.id]);
+  }, [load]);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((d) => setGeneratedBy(d.name ?? ""));
+  }, []);
 
   if (loading) return null;
   if (notFound || !party) {
@@ -134,11 +71,36 @@ export default function PartyStatementPage() {
   }
 
   const ledger = buildLedger(sales, purchases, advances);
-  const runningBalances = ledger.reduce<number[]>((acc, entry) => {
-    const prev = acc.length > 0 ? acc[acc.length - 1] : party.openingBalanceCents;
-    acc.push(prev + entry.amountCents);
-    return acc;
-  }, []);
+  const balances = runningBalances(ledger, party.openingBalanceCents);
+
+  function statementRows() {
+    const rows: string[][] = [];
+    if (party!.openingBalanceCents !== 0) {
+      rows.push(["", "Opening balance", "", "", (party!.openingBalanceCents / 100).toFixed(2)]);
+    }
+    ledger.forEach((entry, index) => {
+      rows.push([
+        formatDate(entry.date),
+        entry.type,
+        entry.note ? `${entry.ref} (${entry.note})` : entry.ref,
+        (entry.amountCents / 100).toFixed(2),
+        (balances[index] / 100).toFixed(2),
+      ]);
+    });
+    return rows;
+  }
+
+  function handleExport(kind: "csv" | "pdf") {
+    const args = {
+      filename: `${party!.name.replace(/\s+/g, "_")}_statement.${kind}`,
+      title: `Statement — ${party!.name}`,
+      header: STATEMENT_HEADER,
+      rows: statementRows(),
+      generatedBy,
+    };
+    if (kind === "csv") downloadReportCsv(args);
+    else downloadReportPdf(args);
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -159,6 +121,28 @@ export default function PartyStatementPage() {
             {party.type.toLowerCase()}
             {party.phone && ` · ${party.phone}`}
           </p>
+        </div>
+        <div className="flex gap-2">
+          <a
+            href={`/print/party/${party.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-md border border-black/15 px-3 py-2 text-sm dark:border-white/15"
+          >
+            Print
+          </a>
+          <button
+            onClick={() => handleExport("csv")}
+            className="rounded-md border border-black/15 px-3 py-2 text-sm dark:border-white/15"
+          >
+            Export CSV
+          </button>
+          <button
+            onClick={() => handleExport("pdf")}
+            className="rounded-md border border-black/15 px-3 py-2 text-sm dark:border-white/15"
+          >
+            Export PDF
+          </button>
         </div>
       </div>
 
@@ -192,6 +176,10 @@ export default function PartyStatementPage() {
           <p className="mt-1 text-xl font-semibold">{formatCents(party.openingBalanceCents)}</p>
         </Card>
       </div>
+
+      <Card title="Record a payment">
+        <RecordPaymentForm parties={[party]} lockPartyId={party.id} onSaved={load} />
+      </Card>
 
       <Card title="Statement" className="p-0">
         <div className="overflow-x-auto">
@@ -246,7 +234,7 @@ export default function PartyStatementPage() {
                           )}`}
                     </td>
                     <td className="px-4 py-3 text-right font-medium whitespace-nowrap">
-                      {formatCents(runningBalances[index])}
+                      {formatCents(balances[index])}
                     </td>
                   </tr>
                 );
