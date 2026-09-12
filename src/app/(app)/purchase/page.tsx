@@ -243,6 +243,13 @@ export default function PurchasePage() {
                             + {c.label} ({formatCents(c.amountCents)})
                           </span>
                         ))}
+                        {purchase.payments
+                          .filter((p) => p.source === "ADVANCE")
+                          .map((p) => (
+                            <span key={p.id} className="text-[#0ca30c]">
+                              {formatCents(p.amountCents)} settled from advance credit
+                            </span>
+                          ))}
                       </div>
                     </td>
                     <td className="px-2 py-3 text-right whitespace-nowrap">

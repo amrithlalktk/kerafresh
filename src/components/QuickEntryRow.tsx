@@ -67,13 +67,16 @@ export default function QuickEntryRow({
   );
   const needsFfaGrade = matchedItem?.ffaGraded ?? false;
 
-  // Only sales settle against a party's advance credit for now — a
-  // purchase's "we prepaid this supplier" pool is a separate concept.
-  const matchedParty =
+  // Sales settle against the "customer prepaid us" pool, purchases against
+  // the mirror-image "we prepaid this supplier" pool (see
+  // getAvailableAdvanceForSalesMap / getAvailableAdvanceForPurchasesMap).
+  const matchedParty = parties.find(
+    (p) => p.name.toLowerCase() === partyName.trim().toLowerCase()
+  );
+  const availableAdvanceCents =
     mode === "SALE"
-      ? parties.find((p) => p.name.toLowerCase() === partyName.trim().toLowerCase())
-      : undefined;
-  const availableAdvanceCents = matchedParty?.availableAdvanceCents ?? 0;
+      ? matchedParty?.availableAdvanceCents ?? 0
+      : matchedParty?.availableAdvanceForPurchaseCents ?? 0;
   const advanceAppliedCents =
     useAdvance && availableAdvanceCents > 0
       ? Math.min(availableAdvanceCents, amountCents)
@@ -159,8 +162,10 @@ export default function QuickEntryRow({
           ],
           charges: [],
           // Otherwise recorded unpaid — collecting a fresh payment happens
-          // via "Payments" on the saved row, not at entry time.
-          paid: appliedCents,
+          // via "Payments" on the saved row, not at entry time. `paid` is
+          // rupees (the route runs it through toCents), unlike
+          // `advanceAppliedCents` which is already cents.
+          paid: appliedCents / 100,
           advanceAppliedCents: appliedCents,
           paymentMethod: "CASH",
         }),

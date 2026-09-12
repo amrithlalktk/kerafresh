@@ -3,7 +3,11 @@ import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatCents } from "@/lib/money";
 import { formatBillDate } from "@/lib/date";
-import { getAvailableAdvanceForSalesMap, getPartyBalanceMap } from "@/lib/balances";
+import {
+  getAvailableAdvanceForPurchasesMap,
+  getAvailableAdvanceForSalesMap,
+  getPartyBalanceMap,
+} from "@/lib/balances";
 import { buildLedger, runningBalances } from "@/lib/partyLedger";
 import { COMPANY } from "@/lib/company";
 import PrintButton from "@/components/PrintButton";
@@ -37,7 +41,14 @@ export default async function PrintPartyStatementPage({
   const party = await db.party.findUnique({ where: { id } });
   if (!party) notFound();
 
-  const [sales, purchases, advances, dueByParty, availableAdvanceByParty] = await Promise.all([
+  const [
+    sales,
+    purchases,
+    advances,
+    dueByParty,
+    availableAdvanceByParty,
+    availableAdvanceForPurchaseByParty,
+  ] = await Promise.all([
     db.sale.findMany({ where: { partyId: id }, include: SALE_INCLUDE, orderBy: { date: "asc" } }),
     db.purchase.findMany({
       where: { partyId: id },
@@ -47,10 +58,12 @@ export default async function PrintPartyStatementPage({
     db.partyPayment.findMany({ where: { partyId: id }, orderBy: { date: "asc" } }),
     getPartyBalanceMap(),
     getAvailableAdvanceForSalesMap(),
+    getAvailableAdvanceForPurchasesMap(),
   ]);
 
   const balanceCents = party.openingBalanceCents + (dueByParty.get(party.id) ?? 0);
   const availableAdvanceCents = availableAdvanceByParty.get(party.id) ?? 0;
+  const availableAdvanceForPurchaseCents = availableAdvanceForPurchaseByParty.get(party.id) ?? 0;
 
   const ledger = buildLedger(sales, purchases, advances);
   const balances = runningBalances(ledger, party.openingBalanceCents);
@@ -89,7 +102,15 @@ export default async function PrintPartyStatementPage({
         </div>
         <div>
           <p className="text-xs uppercase tracking-wide text-black/50">Advance available</p>
-          <p className="font-medium">{formatCents(availableAdvanceCents)}</p>
+          <p className="font-medium">
+            {formatCents(availableAdvanceCents || availableAdvanceForPurchaseCents)}
+          </p>
+          {availableAdvanceCents > 0 && (
+            <p className="text-xs text-black/50">for their next sale</p>
+          )}
+          {availableAdvanceForPurchaseCents > 0 && (
+            <p className="text-xs text-black/50">for their next purchase</p>
+          )}
         </div>
         <div>
           <p className="text-xs uppercase tracking-wide text-black/50">Opening balance</p>

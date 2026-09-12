@@ -3,23 +3,30 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { partySchema } from "@/lib/validation";
 import { toCents } from "@/lib/money";
-import { getAvailableAdvanceForSalesMap, getPartyBalanceMap } from "@/lib/balances";
+import {
+  getAvailableAdvanceForPurchasesMap,
+  getAvailableAdvanceForSalesMap,
+  getPartyBalanceMap,
+} from "@/lib/balances";
 
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const [parties, dueByParty, availableAdvanceByParty] = await Promise.all([
-    db.party.findMany({ orderBy: { name: "asc" } }),
-    getPartyBalanceMap(),
-    getAvailableAdvanceForSalesMap(),
-  ]);
+  const [parties, dueByParty, availableAdvanceByParty, availableAdvanceForPurchaseByParty] =
+    await Promise.all([
+      db.party.findMany({ orderBy: { name: "asc" } }),
+      getPartyBalanceMap(),
+      getAvailableAdvanceForSalesMap(),
+      getAvailableAdvanceForPurchasesMap(),
+    ]);
 
   return NextResponse.json(
     parties.map((p) => ({
       ...p,
       balanceCents: p.openingBalanceCents + (dueByParty.get(p.id) ?? 0),
       availableAdvanceCents: availableAdvanceByParty.get(p.id) ?? 0,
+      availableAdvanceForPurchaseCents: availableAdvanceForPurchaseByParty.get(p.id) ?? 0,
     }))
   );
 }
@@ -55,5 +62,6 @@ export async function POST(request: Request) {
     ...party,
     balanceCents: party.openingBalanceCents,
     availableAdvanceCents: 0,
+    availableAdvanceForPurchaseCents: 0,
   });
 }

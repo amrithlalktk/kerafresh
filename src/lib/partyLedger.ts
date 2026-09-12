@@ -23,7 +23,7 @@ type LedgerPurchase = {
   date: string | Date;
   billNumber: number;
   totalCents: number;
-  payments: { date: string | Date; amountCents: number }[];
+  payments: { date: string | Date; amountCents: number; source: PaymentSource }[];
 };
 type LedgerAdvance = {
   date: string | Date;
@@ -82,12 +82,22 @@ export function buildLedger(
       amountCents: -p.totalCents,
     });
     for (const pay of p.payments) {
-      entries.push({
-        date: pay.date,
-        type: "Payment made",
-        ref: `Purchase #${formatBillNumber(p.billNumber)}`,
-        amountCents: pay.amountCents,
-      });
+      if (pay.source === "ADVANCE") {
+        entries.push({
+          date: pay.date,
+          type: "Advance applied",
+          ref: `Purchase #${formatBillNumber(p.billNumber)}`,
+          note: "settled from advance credit — no balance change",
+          amountCents: 0,
+        });
+      } else {
+        entries.push({
+          date: pay.date,
+          type: "Payment made",
+          ref: `Purchase #${formatBillNumber(p.billNumber)}`,
+          amountCents: pay.amountCents,
+        });
+      }
     }
   }
 

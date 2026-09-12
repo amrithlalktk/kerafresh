@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { purchaseSchema } from "@/lib/validation";
 import { toCents } from "@/lib/money";
+import { getAvailableAdvanceForPurchasesMap } from "@/lib/balances";
 import type { Prisma } from "@prisma/client";
 
 const PAGE_SIZE = 25;
@@ -88,7 +89,25 @@ export async function POST(request: Request) {
     );
   }
 
-  const { date, partyId, items, charges, paid, paymentMethod, notes } = parsed.data;
+  const { date, partyId, items, charges, paid, advanceAppliedCents, paymentMethod, notes } =
+    parsed.data;
+
+  if (advanceAppliedCents > 0) {
+    if (!partyId) {
+      return NextResponse.json(
+        { error: "Advance credit requires a party" },
+        { status: 400 }
+      );
+    }
+    const availableByParty = await getAvailableAdvanceForPurchasesMap();
+    if (advanceAppliedCents > (availableByParty.get(partyId) ?? 0)) {
+      return NextResponse.json(
+        { error: "That party doesn't have that much advance credit available" },
+        { status: 400 }
+      );
+    }
+  }
+
   const lineData = items.map((line) => {
     const priceCents = toCents(line.price);
     // Quantity is in KG and can be fractional (e.g. 1.5) — round to whole
@@ -115,8 +134,27 @@ export async function POST(request: Request) {
     chargeData.reduce((sum, c) => sum + c.amountCents, 0);
 
   const paidCents = toCents(paid);
+  const cashPaidCents = Math.max(0, paidCents - advanceAppliedCents);
   const lastBill = await db.purchase.aggregate({ _max: { billNumber: true } });
   const billNumber = (lastBill._max.billNumber ?? 0) + 1;
+  // Split "paid now" into an ADVANCE-sourced entry (already-given money, just
+  // applied to this bill) and a CASH entry (new money) — mirrors sales/route.ts.
+  const paymentData = [
+    ...(advanceAppliedCents > 0
+      ? [
+          {
+            date: new Date(date),
+            amountCents: advanceAppliedCents,
+            paymentMethod,
+            source: "ADVANCE" as const,
+            notes: "Settled from advance credit",
+          },
+        ]
+      : []),
+    ...(cashPaidCents > 0
+      ? [{ date: new Date(date), amountCents: cashPaidCents, paymentMethod }]
+      : []),
+  ];
   const purchase = await db.purchase.create({
     data: {
       billNumber,
@@ -129,9 +167,7 @@ export async function POST(request: Request) {
       userId: session.userId,
       items: { create: lineData },
       charges: { create: chargeData },
-      payments: paidCents > 0
-        ? { create: [{ date: new Date(date), amountCents: paidCents, paymentMethod }] }
-        : undefined,
+      payments: paymentData.length > 0 ? { create: paymentData } : undefined,
     },
     include: PURCHASE_INCLUDE,
   });

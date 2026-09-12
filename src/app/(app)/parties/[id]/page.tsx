@@ -171,8 +171,14 @@ export default function PartyStatementPage() {
         <Card>
           <p className="text-xs text-black/50 dark:text-white/50">Advance available</p>
           <p className="mt-1 text-xl font-semibold text-[#0ca30c]">
-            {formatCents(party.availableAdvanceCents)}
+            {formatCents(party.availableAdvanceCents || party.availableAdvanceForPurchaseCents)}
           </p>
+          {party.availableAdvanceCents > 0 && (
+            <p className="text-xs text-black/50 dark:text-white/50">for their next sale</p>
+          )}
+          {party.availableAdvanceForPurchaseCents > 0 && (
+            <p className="text-xs text-black/50 dark:text-white/50">for their next purchase</p>
+          )}
         </Card>
         <Card>
           <p className="text-xs text-black/50 dark:text-white/50">Opening balance</p>

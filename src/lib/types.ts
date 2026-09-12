@@ -70,6 +70,11 @@ export type Party = {
   // Unapplied "RECEIVED" advance credit (see PartyPayment) still available
   // to settle a future sale.
   availableAdvanceCents: number;
+  // Mirror of the above for the other direction — unapplied "PAID" advance
+  // credit still available to settle a future purchase. A party's net
+  // advance position only ever favors one direction, so at most one of
+  // these two is ever nonzero.
+  availableAdvanceForPurchaseCents: number;
 };
 
 export type PartyPaymentDirection = "RECEIVED" | "PAID";

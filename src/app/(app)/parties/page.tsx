@@ -152,6 +152,7 @@ export default function PartiesPage() {
                       <PartyAdvancePayments
                         partyId={p.id}
                         availableAdvanceCents={p.availableAdvanceCents}
+                        availableAdvanceForPurchaseCents={p.availableAdvanceForPurchaseCents}
                         onChange={load}
                         canDelete={canDelete}
                       />

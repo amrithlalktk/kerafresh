@@ -284,6 +284,11 @@ model PurchasePayment {
   date          DateTime
   amountCents   Int
   paymentMethod PaymentMethod @default(CASH)
+  // ADVANCE means this amount was already accounted for as a PartyPayment
+  // (PAID) earlier — see getPartyBalanceMap, which nets ADVANCE-sourced
+  // purchase payments back out of the party's advance pool so it isn't
+  // counted as both "still available" and "used to pay this bill".
+  source        PaymentSource @default(CASH)
   notes         String?
   createdAt     DateTime      @default(now())
 

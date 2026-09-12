@@ -21,9 +21,31 @@ async function getAdvanceSourcedOnSalesMap() {
   return map;
 }
 
+// Mirrors getAdvanceSourcedOnSalesMap but for the "we prepaid this supplier"
+// pool (PartyPayment PAID) settled against Purchases instead.
+async function getAdvanceSourcedOnPurchasesMap() {
+  const rows = await db.purchasePayment.findMany({
+    where: { source: "ADVANCE" },
+    select: { amountCents: true, purchase: { select: { partyId: true } } },
+  });
+  const map = new Map<string, number>();
+  for (const row of rows) {
+    const partyId = row.purchase.partyId;
+    if (!partyId) continue;
+    map.set(partyId, (map.get(partyId) ?? 0) + row.amountCents);
+  }
+  return map;
+}
+
 export async function getPartyBalanceMap() {
-  const [saleTotals, purchaseTotals, receivedTotals, paidTotals, advanceSourcedOnSales] =
-    await Promise.all([
+  const [
+    saleTotals,
+    purchaseTotals,
+    receivedTotals,
+    paidTotals,
+    advanceSourcedOnSales,
+    advanceSourcedOnPurchases,
+  ] = await Promise.all([
       db.sale.groupBy({
         by: ["partyId"],
         where: { partyId: { not: null } },
@@ -49,6 +71,7 @@ export async function getPartyBalanceMap() {
         _sum: { amountCents: true },
       }),
       getAdvanceSourcedOnSalesMap(),
+      getAdvanceSourcedOnPurchasesMap(),
     ]);
 
   const dueByParty = new Map<string, number>();
@@ -81,6 +104,13 @@ export async function getPartyBalanceMap() {
   for (const [partyId, amount] of advanceSourcedOnSales) {
     dueByParty.set(partyId, (dueByParty.get(partyId) ?? 0) + amount);
   }
+  // Mirror image for Purchases: a Purchase's paidCents already includes any
+  // ADVANCE-sourced payments, which independently nudges the line above
+  // toward positive too (via paidTotals above) — subtract the same amount
+  // back out here to cancel that double-count.
+  for (const [partyId, amount] of advanceSourcedOnPurchases) {
+    dueByParty.set(partyId, (dueByParty.get(partyId) ?? 0) - amount);
+  }
   return dueByParty;
 }
 
@@ -110,6 +140,44 @@ export async function getAvailableAdvanceForSalesMap() {
     map.set(row.partyId, (map.get(row.partyId) ?? 0) - (row._sum.amountCents ?? 0));
   }
   for (const [partyId, amount] of advanceSourcedOnSales) {
+    map.set(partyId, (map.get(partyId) ?? 0) - amount);
+  }
+  for (const [partyId, amount] of map) {
+    map.set(partyId, Math.max(0, amount));
+  }
+  return map;
+}
+
+// Mirror of getAvailableAdvanceForSalesMap for the other direction: how much
+// of a party's PAID advance (money we already gave them, e.g. prepaying a
+// supplier) is still unapplied — used to offer "apply advance to this bill"
+// when recording a new purchase. A party's net advance position can only
+// ever favor one direction at a time (this and getAvailableAdvanceForSalesMap
+// are mirror images of the same RECEIVED/PAID totals), so at most one of the
+// two returns a positive amount for any given party.
+export async function getAvailableAdvanceForPurchasesMap() {
+  const [receivedTotals, paidTotals, advanceSourcedOnPurchases] = await Promise.all([
+    db.partyPayment.groupBy({
+      by: ["partyId"],
+      where: { direction: "RECEIVED" },
+      _sum: { amountCents: true },
+    }),
+    db.partyPayment.groupBy({
+      by: ["partyId"],
+      where: { direction: "PAID" },
+      _sum: { amountCents: true },
+    }),
+    getAdvanceSourcedOnPurchasesMap(),
+  ]);
+
+  const map = new Map<string, number>();
+  for (const row of paidTotals) {
+    map.set(row.partyId, (map.get(row.partyId) ?? 0) + (row._sum.amountCents ?? 0));
+  }
+  for (const row of receivedTotals) {
+    map.set(row.partyId, (map.get(row.partyId) ?? 0) - (row._sum.amountCents ?? 0));
+  }
+  for (const [partyId, amount] of advanceSourcedOnPurchases) {
     map.set(partyId, (map.get(partyId) ?? 0) - amount);
   }
   for (const [partyId, amount] of map) {

@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { isAdminRole } from "@/lib/types";
 import { paymentSchema } from "@/lib/validation";
-import { toCents } from "@/lib/money";
+import { formatBillNumber, toCents } from "@/lib/money";
 
 async function canModify(userId: string, isAdmin: boolean, saleId: string) {
   if (isAdmin) return true;
@@ -33,17 +33,47 @@ export async function POST(
   }
 
   const { date, amount, paymentMethod, notes } = parsed.data;
+  const amountCents = toCents(amount);
 
   const sale = await db.$transaction(async (tx) => {
-    await tx.salePayment.create({
-      data: {
-        saleId: id,
-        date: new Date(date),
-        amountCents: toCents(amount),
-        paymentMethod,
-        notes: notes || null,
-      },
+    const existing = await tx.sale.findUniqueOrThrow({
+      where: { id },
+      select: { billNumber: true, totalCents: true, paidCents: true, partyId: true },
     });
+    const dueCents = Math.max(0, existing.totalCents - existing.paidCents);
+    // Anything paid beyond what's actually due on this bill becomes advance
+    // credit for the party instead of over-paying the bill itself, so it's
+    // automatically available to settle their next sale (see
+    // getAvailableAdvanceForSalesMap) — only possible when there's a party to
+    // attribute it to; a cash sale with no party keeps the old behavior.
+    const billPortionCents = existing.partyId ? Math.min(amountCents, dueCents) : amountCents;
+    const excessCents = amountCents - billPortionCents;
+
+    if (billPortionCents > 0) {
+      await tx.salePayment.create({
+        data: {
+          saleId: id,
+          date: new Date(date),
+          amountCents: billPortionCents,
+          paymentMethod,
+          notes: notes || null,
+        },
+      });
+    }
+    if (excessCents > 0 && existing.partyId) {
+      await tx.partyPayment.create({
+        data: {
+          partyId: existing.partyId,
+          date: new Date(date),
+          direction: "RECEIVED",
+          amountCents: excessCents,
+          paymentMethod,
+          notes: `Excess payment on Sale #${formatBillNumber(existing.billNumber)} — added as advance credit`,
+          userId: session.userId,
+        },
+      });
+    }
+
     const total = await tx.salePayment.aggregate({
       where: { saleId: id },
       _sum: { amountCents: true },

@@ -25,11 +25,13 @@ function todayStr() {
 export default function PartyAdvancePayments({
   partyId,
   availableAdvanceCents,
+  availableAdvanceForPurchaseCents,
   onChange,
   canDelete,
 }: {
   partyId: string;
   availableAdvanceCents: number;
+  availableAdvanceForPurchaseCents: number;
   onChange: () => void;
   canDelete: boolean;
 }) {
@@ -131,11 +133,19 @@ export default function PartyAdvancePayments({
     <div className="flex flex-col gap-3 rounded-lg bg-black/[0.02] p-3 dark:bg-white/[0.03]">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm font-medium">Advance payments</span>
-        {availableAdvanceCents > 0 && (
-          <span className="text-sm text-[#0ca30c]">
-            {formatCents(availableAdvanceCents)} available to apply on the next sale
-          </span>
-        )}
+        <span className="flex flex-col items-end gap-0.5">
+          {availableAdvanceCents > 0 && (
+            <span className="text-sm text-[#0ca30c]">
+              {formatCents(availableAdvanceCents)} available to apply on the next sale
+            </span>
+          )}
+          {availableAdvanceForPurchaseCents > 0 && (
+            <span className="text-sm text-[#0ca30c]">
+              {formatCents(availableAdvanceForPurchaseCents)} available to apply on the next
+              purchase
+            </span>
+          )}
+        </span>
       </div>
 
       {loading ? (

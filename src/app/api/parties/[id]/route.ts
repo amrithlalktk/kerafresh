@@ -4,7 +4,11 @@ import { getSession } from "@/lib/auth";
 import { isAdminRole } from "@/lib/types";
 import { partySchema } from "@/lib/validation";
 import { toCents } from "@/lib/money";
-import { getAvailableAdvanceForSalesMap, getPartyBalanceMap } from "@/lib/balances";
+import {
+  getAvailableAdvanceForPurchasesMap,
+  getAvailableAdvanceForSalesMap,
+  getPartyBalanceMap,
+} from "@/lib/balances";
 
 export async function GET(
   _request: Request,
@@ -17,15 +21,18 @@ export async function GET(
   const party = await db.party.findUnique({ where: { id } });
   if (!party) return NextResponse.json({ error: "Party not found" }, { status: 404 });
 
-  const [dueByParty, availableAdvanceByParty] = await Promise.all([
-    getPartyBalanceMap(),
-    getAvailableAdvanceForSalesMap(),
-  ]);
+  const [dueByParty, availableAdvanceByParty, availableAdvanceForPurchaseByParty] =
+    await Promise.all([
+      getPartyBalanceMap(),
+      getAvailableAdvanceForSalesMap(),
+      getAvailableAdvanceForPurchasesMap(),
+    ]);
 
   return NextResponse.json({
     ...party,
     balanceCents: party.openingBalanceCents + (dueByParty.get(party.id) ?? 0),
     availableAdvanceCents: availableAdvanceByParty.get(party.id) ?? 0,
+    availableAdvanceForPurchaseCents: availableAdvanceForPurchaseByParty.get(party.id) ?? 0,
   });
 }
 
