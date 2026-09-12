@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   if (categoryId) where.categoryId = categoryId;
   if (paymentMethod === "CASH" || paymentMethod === "BANK")
     where.paymentMethod = paymentMethod;
-  if (q) where.description = { contains: q };
+  if (q) where.description = { contains: q, mode: "insensitive" };
 
   const expenses = await db.transaction.findMany({
     where,

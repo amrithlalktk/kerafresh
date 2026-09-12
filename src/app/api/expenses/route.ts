@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     }
   }
   if (categoryId) where.categoryId = categoryId;
-  if (q) where.description = { contains: q };
+  if (q) where.description = { contains: q, mode: "insensitive" };
 
   const [expenses, total] = await Promise.all([
     db.transaction.findMany({

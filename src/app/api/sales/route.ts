@@ -47,9 +47,9 @@ export async function GET(request: Request) {
   if (itemId) where.items = { some: { itemId } };
   if (q) {
     where.OR = [
-      { party: { name: { contains: q } } },
-      { items: { some: { item: { name: { contains: q } } } } },
-      { notes: { contains: q } },
+      { party: { name: { contains: q, mode: "insensitive" } } },
+      { items: { some: { item: { name: { contains: q, mode: "insensitive" } } } } },
+      { notes: { contains: q, mode: "insensitive" } },
     ];
   }
 
