@@ -6,6 +6,7 @@ import Card from "@/components/Card";
 import SummaryCard from "@/components/SummaryCard";
 import { downloadReportCsv, downloadReportPdf } from "@/lib/reportExport";
 import type { Expense, Purchase, Sale } from "@/lib/types";
+import BillPreviewModal, { type PreviewBillType } from "@/components/BillPreviewModal";
 
 type DayRowItem = { name: string; quantity: number; priceCents: number };
 
@@ -17,6 +18,8 @@ type DayRow = {
   items: DayRowItem[];
   detail: string;
   amountCents: number;
+  // Undefined for Expense rows — no bill to preview.
+  bill?: { type: PreviewBillType; id: string };
 };
 
 function today() {
@@ -41,6 +44,9 @@ export default function DayBookPage() {
   const [rows, setRows] = useState<DayRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatedBy, setGeneratedBy] = useState("");
+  const [previewBill, setPreviewBill] = useState<{ type: PreviewBillType; id: string } | null>(
+    null
+  );
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -71,6 +77,7 @@ export default function DayBookPage() {
         })),
         detail: "",
         amountCents: s.totalCents,
+        bill: { type: "SALE", id: s.id },
       })),
       ...purchases.map((p): DayRow => ({
         type: "Purchase",
@@ -83,6 +90,7 @@ export default function DayBookPage() {
         })),
         detail: "",
         amountCents: p.totalCents,
+        bill: { type: "PURCHASE", id: p.id },
       })),
       ...expenses.map((e): DayRow => ({
         type: "Expense",
@@ -205,7 +213,19 @@ export default function DayBookPage() {
                       {r.type}
                     </span>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">{r.ref}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {r.bill ? (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewBill(r.bill!)}
+                        className="underline underline-offset-4 hover:text-black dark:hover:text-white"
+                      >
+                        {r.ref}
+                      </button>
+                    ) : (
+                      r.ref
+                    )}
+                  </td>
                   <td className="px-4 py-3">{r.partyOrCategory}</td>
                   {r.items.length > 0 ? (
                     <>
@@ -252,6 +272,14 @@ export default function DayBookPage() {
           </table>
         </div>
       </Card>
+
+      {previewBill && (
+        <BillPreviewModal
+          billType={previewBill.type}
+          billId={previewBill.id}
+          onClose={() => setPreviewBill(null)}
+        />
+      )}
     </div>
   );
 }

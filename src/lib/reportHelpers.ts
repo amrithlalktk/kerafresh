@@ -6,6 +6,7 @@ import type { Expense } from "@/lib/types";
 export type TxType = "SALE" | "PURCHASE";
 export type TxRowItem = { name: string; quantity: number; priceCents: number };
 export type TxRow = {
+  id: string;
   type: TxType;
   billNumber: number;
   date: string;

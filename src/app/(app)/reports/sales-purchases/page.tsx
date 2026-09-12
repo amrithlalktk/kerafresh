@@ -18,6 +18,7 @@ import {
   type TxType,
 } from "@/lib/reportHelpers";
 import type { Item, Party, Purchase, Sale } from "@/lib/types";
+import BillPreviewModal, { type PreviewBillType } from "@/components/BillPreviewModal";
 
 export default function SalesPurchasesReportPage() {
   const { from: txFrom, to: txTo, setFrom: setTxFrom, setTo: setTxTo, ready } = useDefaultDateRange();
@@ -31,6 +32,9 @@ export default function SalesPurchasesReportPage() {
   const [txLoading, setTxLoading] = useState(true);
   const [taxOnly, setTaxOnly] = useState(false);
   const [generatedBy, setGeneratedBy] = useState("");
+  const [previewBill, setPreviewBill] = useState<{ type: PreviewBillType; id: string } | null>(
+    null
+  );
 
   useEffect(() => {
     fetch("/api/parties")
@@ -73,6 +77,7 @@ export default function SalesPurchasesReportPage() {
 
     const rows: TxRow[] = [
       ...sales.map((s): TxRow => ({
+        id: s.id,
         type: "SALE",
         billNumber: s.billNumber,
         date: s.date,
@@ -87,6 +92,7 @@ export default function SalesPurchasesReportPage() {
         taxCents: s.items.reduce((sum, l) => sum + l.taxCents, 0),
       })),
       ...purchases.map((p): TxRow => ({
+        id: p.id,
         type: "PURCHASE",
         billNumber: p.billNumber,
         date: p.date,
@@ -372,7 +378,15 @@ export default function SalesPurchasesReportPage() {
                           {r.type === "SALE" ? "Sale" : "Purchase"}
                         </span>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">#{formatBillNumber(r.billNumber)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewBill({ type: r.type, id: r.id })}
+                          className="underline underline-offset-4 hover:text-black dark:hover:text-white"
+                        >
+                          #{formatBillNumber(r.billNumber)}
+                        </button>
+                      </td>
                       <td className="px-4 py-3 whitespace-nowrap">{formatDate(r.date)}</td>
                       <td className="px-4 py-3">{r.partyName}</td>
                       <td className="px-4 py-3">
@@ -421,6 +435,14 @@ export default function SalesPurchasesReportPage() {
           )}
         </div>
       </Card>
+
+      {previewBill && (
+        <BillPreviewModal
+          billType={previewBill.type}
+          billId={previewBill.id}
+          onClose={() => setPreviewBill(null)}
+        />
+      )}
     </div>
   );
 }

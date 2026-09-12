@@ -7,6 +7,9 @@ export type LedgerEntry = {
   ref: string;
   note?: string;
   amountCents: number;
+  // Set only for entries tied to an actual Sale/Purchase (not Advance
+  // entries) — lets the UI offer a click-to-preview on the reference.
+  bill?: { type: "SALE" | "PURCHASE"; id: string };
 };
 
 // Only the fields this module actually reads — `date` as `string | Date` so
@@ -14,12 +17,14 @@ export type LedgerEntry = {
 // from @/lib/types, dates already strings) and raw Prisma query results in
 // a server component (dates are real Date objects there).
 type LedgerSale = {
+  id: string;
   date: string | Date;
   billNumber: number;
   totalCents: number;
   payments: { date: string | Date; amountCents: number; source: PaymentSource }[];
 };
 type LedgerPurchase = {
+  id: string;
   date: string | Date;
   billNumber: number;
   totalCents: number;
@@ -48,11 +53,13 @@ export function buildLedger(
   const entries: LedgerEntry[] = [];
 
   for (const s of sales) {
+    const bill = { type: "SALE" as const, id: s.id };
     entries.push({
       date: s.date,
       type: "Sale",
       ref: `Sale #${formatBillNumber(s.billNumber)}`,
       amountCents: s.totalCents,
+      bill,
     });
     for (const p of s.payments) {
       if (p.source === "ADVANCE") {
@@ -62,6 +69,7 @@ export function buildLedger(
           ref: `Sale #${formatBillNumber(s.billNumber)}`,
           note: "settled from advance credit — no balance change",
           amountCents: 0,
+          bill,
         });
       } else {
         entries.push({
@@ -69,17 +77,20 @@ export function buildLedger(
           type: "Payment received",
           ref: `Sale #${formatBillNumber(s.billNumber)}`,
           amountCents: -p.amountCents,
+          bill,
         });
       }
     }
   }
 
   for (const p of purchases) {
+    const bill = { type: "PURCHASE" as const, id: p.id };
     entries.push({
       date: p.date,
       type: "Purchase",
       ref: `Purchase #${formatBillNumber(p.billNumber)}`,
       amountCents: -p.totalCents,
+      bill,
     });
     for (const pay of p.payments) {
       if (pay.source === "ADVANCE") {
@@ -89,6 +100,7 @@ export function buildLedger(
           ref: `Purchase #${formatBillNumber(p.billNumber)}`,
           note: "settled from advance credit — no balance change",
           amountCents: 0,
+          bill,
         });
       } else {
         entries.push({
@@ -96,6 +108,7 @@ export function buildLedger(
           type: "Payment made",
           ref: `Purchase #${formatBillNumber(p.billNumber)}`,
           amountCents: pay.amountCents,
+          bill,
         });
       }
     }

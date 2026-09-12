@@ -10,6 +10,7 @@ import { downloadReportCsv, downloadReportPdf } from "@/lib/reportExport";
 import type { Party, PartyPayment, Purchase, Sale } from "@/lib/types";
 import Card from "@/components/Card";
 import RecordPaymentForm from "@/components/RecordPaymentForm";
+import BillPreviewModal, { type PreviewBillType } from "@/components/BillPreviewModal";
 
 const STATEMENT_HEADER = ["Date", "Type", "Reference", "Debit", "Credit", "Balance"];
 
@@ -24,6 +25,9 @@ export default function PartyStatementPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [generatedBy, setGeneratedBy] = useState("");
+  const [previewBill, setPreviewBill] = useState<{ type: PreviewBillType; id: string } | null>(
+    null
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -223,7 +227,19 @@ export default function PartyStatementPage() {
                     <td className="px-4 py-3 whitespace-nowrap">{formatDate(entry.date)}</td>
                     <td className="px-4 py-3">{entry.type}</td>
                     <td className="px-4 py-3">
-                      {entry.ref}
+                      {entry.bill ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPreviewBill({ type: entry.bill!.type, id: entry.bill!.id })
+                          }
+                          className="underline underline-offset-4 hover:text-black dark:hover:text-white"
+                        >
+                          {entry.ref}
+                        </button>
+                      ) : (
+                        entry.ref
+                      )}
                       {entry.note && (
                         <span className="block text-xs text-black/50 dark:text-white/50">
                           {entry.note}
@@ -253,6 +269,14 @@ export default function PartyStatementPage() {
           </table>
         </div>
       </Card>
+
+      {previewBill && (
+        <BillPreviewModal
+          billType={previewBill.type}
+          billId={previewBill.id}
+          onClose={() => setPreviewBill(null)}
+        />
+      )}
     </div>
   );
 }

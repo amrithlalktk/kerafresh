@@ -7,6 +7,7 @@ import { isAdminRole, paymentMethodLabel, type CombinedPayment, type Party } fro
 import { useViewerRole } from "@/lib/useViewerRole";
 import Card from "@/components/Card";
 import RecordPaymentForm, { type PayType } from "@/components/RecordPaymentForm";
+import BillPreviewModal, { type PreviewBillType } from "@/components/BillPreviewModal";
 
 const inputClass =
   "rounded-md border border-black/15 px-2 py-1.5 text-sm dark:border-white/15 dark:bg-transparent";
@@ -37,6 +38,9 @@ export default function PaymentsPage() {
   const [filterTo, setFilterTo] = useState("");
   const [historyPage, setHistoryPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [previewBill, setPreviewBill] = useState<{ type: PreviewBillType; id: string } | null>(
+    null
+  );
 
   useEffect(() => {
     fetch("/api/parties")
@@ -163,11 +167,23 @@ export default function PaymentsPage() {
                     <td className="px-4 py-2">{kindLabel[p.kind]}</td>
                     <td className="px-4 py-2">{p.partyName}</td>
                     <td className="px-4 py-2">
-                      {p.kind === "ADVANCE"
-                        ? p.direction === "RECEIVED"
-                          ? "Advance received"
-                          : "Advance paid"
-                        : `Bill #${formatBillNumber(p.billNumber ?? 0)}`}
+                      {p.kind === "ADVANCE" ? (
+                        p.direction === "RECEIVED" ? (
+                          "Advance received"
+                        ) : (
+                          "Advance paid"
+                        )
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPreviewBill({ type: p.kind as PreviewBillType, id: p.refId })
+                          }
+                          className="underline underline-offset-4 hover:text-black dark:hover:text-white"
+                        >
+                          Bill #{formatBillNumber(p.billNumber ?? 0)}
+                        </button>
+                      )}
                     </td>
                     <td className="px-4 py-2 text-right whitespace-nowrap text-[#d03b3b]">
                       {credit ? "—" : formatCents(p.amountCents)}
@@ -231,6 +247,14 @@ export default function PaymentsPage() {
           </div>
         )}
       </Card>
+
+      {previewBill && (
+        <BillPreviewModal
+          billType={previewBill.type}
+          billId={previewBill.id}
+          onClose={() => setPreviewBill(null)}
+        />
+      )}
     </div>
   );
 }

@@ -23,6 +23,19 @@ async function canModify(userId: string, isAdmin: boolean, purchaseId: string) {
   return purchase?.userId === userId;
 }
 
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+  const purchase = await db.purchase.findUnique({ where: { id }, include: PURCHASE_INCLUDE });
+  if (!purchase) return NextResponse.json({ error: "Purchase not found" }, { status: 404 });
+  return NextResponse.json(purchase);
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }

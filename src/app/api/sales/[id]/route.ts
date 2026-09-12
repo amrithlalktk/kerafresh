@@ -20,6 +20,19 @@ async function canModify(userId: string, isAdmin: boolean, saleId: string) {
   return sale?.userId === userId;
 }
 
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+  const sale = await db.sale.findUnique({ where: { id }, include: SALE_INCLUDE });
+  if (!sale) return NextResponse.json({ error: "Sale not found" }, { status: 404 });
+  return NextResponse.json(sale);
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
