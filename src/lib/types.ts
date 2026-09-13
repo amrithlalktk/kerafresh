@@ -200,3 +200,19 @@ export type Purchase = {
   notes: string | null;
   recordedBy: { name: string };
 };
+
+export type NoteSheetData = {
+  rows: number;
+  cols: number;
+  // Sparse — only non-empty cells are stored, keyed by address (e.g. "A1").
+  cells: Record<string, string>;
+};
+
+export type NoteSheet = {
+  id: string;
+  name: string;
+  order: number;
+  data: NoteSheetData;
+  createdAt: string;
+  updatedAt: string;
+};

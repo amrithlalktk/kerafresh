@@ -323,3 +323,19 @@ model PurchaseCharge {
   label        String
   amountCents  Int
 }
+
+// A free-form, Excel-like sheet — shared across the whole team like every
+// other record in the app, not scoped to the user who created it. Cells are
+// stored sparsely (only non-empty ones) as { "A1": "raw text or =formula" },
+// keyed by spreadsheet-style address — a full one-row-per-cell table would
+// be massive overkill for typical usage and adds nothing a JSON blob
+// doesn't already give us just as well.
+model NoteSheet {
+  id        String   @id @default(cuid())
+  name      String
+  // Display/tab order — lower first.
+  order     Int      @default(0)
+  data      Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

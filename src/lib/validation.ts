@@ -109,3 +109,21 @@ export const partyPaymentSchema = z.object({
   paymentMethod: z.enum(["CASH", "BANK"]).default("CASH"),
   notes: z.string().trim().optional().nullable(),
 });
+
+export const noteSheetSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(60, "Name is too long"),
+});
+
+export const noteSheetDataSchema = z.object({
+  rows: z.number().int().min(1).max(2000),
+  cols: z.number().int().min(1).max(500),
+  cells: z.record(z.string(), z.string()),
+});
+
+// Renaming a sheet and saving its grid happen separately (rename is rare,
+// grid saves happen on a debounce) — both optional so either can be sent
+// alone.
+export const noteSheetPatchSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(60, "Name is too long").optional(),
+  data: noteSheetDataSchema.optional(),
+});

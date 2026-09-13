@@ -14,6 +14,7 @@ import {
   Tags,
   UserCog,
   Upload,
+  Table2,
 } from "lucide-react";
 import type { SessionPayload } from "@/lib/auth";
 import { isAdminRole } from "@/lib/types";
@@ -28,6 +29,7 @@ const LINKS = [
   { href: "/payments", label: "Payments", icon: Wallet, adminOnly: false },
   { href: "/expenses", label: "Expenses", icon: Receipt, adminOnly: false },
   { href: "/reports", label: "Reports", icon: BarChart2, adminOnly: false },
+  { href: "/notes", label: "Notes", icon: Table2, adminOnly: false },
   { href: "/import", label: "Import", icon: Upload, adminOnly: true },
   { href: "/categories", label: "Categories", icon: Tags, adminOnly: true },
   { href: "/users", label: "Users", icon: UserCog, adminOnly: true },
