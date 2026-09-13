@@ -2,10 +2,34 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { noteSheetSchema } from "@/lib/validation";
+import { cellAddress } from "@/lib/spreadsheet";
 import type { NoteSheetData } from "@/lib/types";
 
 const DEFAULT_ROWS = 30;
 const DEFAULT_COLS = 20;
+
+// Every new sheet starts with this header row — matches the columns this
+// business actually tracks per bill, so a blank sheet is ready to use
+// immediately instead of needing the same headers typed in by hand every
+// time.
+const DEFAULT_HEADERS = [
+  "Bill Number",
+  "Date",
+  "Party",
+  "Item",
+  "Bill Amount",
+  "Tax",
+  "Lorry Rent",
+  "Cash Balance",
+];
+
+function defaultCells(): Record<string, string> {
+  const cells: Record<string, string> = {};
+  DEFAULT_HEADERS.forEach((label, col) => {
+    cells[cellAddress(0, col)] = label;
+  });
+  return cells;
+}
 
 export async function GET() {
   const session = await getSession();
@@ -29,7 +53,11 @@ export async function POST(request: Request) {
   }
 
   const last = await db.noteSheet.aggregate({ _max: { order: true } });
-  const data: NoteSheetData = { rows: DEFAULT_ROWS, cols: DEFAULT_COLS, cells: {} };
+  const data: NoteSheetData = {
+    rows: DEFAULT_ROWS,
+    cols: DEFAULT_COLS,
+    cells: defaultCells(),
+  };
   const sheet = await db.noteSheet.create({
     data: {
       name: parsed.data.name,

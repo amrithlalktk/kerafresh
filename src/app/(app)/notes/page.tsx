@@ -386,7 +386,9 @@ export default function NotesPage() {
                               onChange={(e) => setEditValue(e.target.value)}
                               onBlur={(e) => commitEdit(r, c, e.target.value)}
                               onKeyDown={(e) => handleKeyDown(e, r, c)}
-                              className="block w-full min-w-[90px] bg-transparent px-2 py-1.5 text-sm outline-none focus:bg-black/5 dark:focus:bg-white/10"
+                              className={`block w-full min-w-[90px] bg-transparent px-2 py-1.5 text-sm outline-none focus:bg-black/5 dark:focus:bg-white/10 ${
+                                r === 0 ? "font-semibold" : ""
+                              }`}
                             />
                           </td>
                         );
