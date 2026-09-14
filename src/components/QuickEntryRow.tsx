@@ -51,7 +51,7 @@ export default function QuickEntryRow({
   const [billNumber, setBillNumber] = useState("");
   const [partyName, setPartyName] = useState("");
   const [itemName, setItemName] = useState("");
-  const [qty, setQty] = useState("1");
+  const [qty, setQty] = useState("");
   const [price, setPrice] = useState("");
   const [taxPercent, setTaxPercent] = useState("0");
   const [ffaGrade, setFfaGrade] = useState("");
@@ -203,7 +203,7 @@ export default function QuickEntryRow({
       // Keep date/party so a run of entries for the same day/party stays
       // fast to type; only the line-specific fields reset.
       setItemName("");
-      setQty("1");
+      setQty("");
       setPrice("");
       setTaxPercent("0");
       setFfaGrade("");

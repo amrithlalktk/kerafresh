@@ -104,7 +104,7 @@ export default function BillPreviewModal({
                 <thead className="text-left text-black/60 dark:text-white/60">
                   <tr>
                     <th className="px-3 py-2">Item</th>
-                    <th className="px-3 py-2 text-center">KG</th>
+                    <th className="px-3 py-2 text-center">Weight</th>
                     <th className="px-3 py-2 text-right">Price</th>
                     <th className="px-3 py-2 text-right">Line Total</th>
                   </tr>

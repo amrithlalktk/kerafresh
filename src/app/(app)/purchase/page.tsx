@@ -176,7 +176,7 @@ export default function PurchasePage() {
                 </th>
                 <th className="w-36 px-2 py-3">Party</th>
                 <th className="w-36 px-2 py-3">Item</th>
-                <th className="w-20 px-2 py-3 text-center">KG</th>
+                <th className="w-20 px-2 py-3 text-center">Weight</th>
                 <th className="w-32 px-2 py-3">Price</th>
                 <th className="w-16 px-2 py-3 text-center">FFA</th>
                 <th className="w-16 px-2 py-3 text-center">Tax %</th>

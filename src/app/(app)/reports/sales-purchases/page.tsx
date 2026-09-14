@@ -362,7 +362,7 @@ export default function SalesPurchasesReportPage() {
                   <th className="px-4 py-3">Date</th>
                   <th className="px-4 py-3">Party</th>
                   <th className="px-4 py-3">Item</th>
-                  <th className="px-4 py-3 text-center">KG</th>
+                  <th className="px-4 py-3 text-center">Weight</th>
                   <th className="px-4 py-3">Price</th>
                   <th className="px-4 py-3 text-right">Total</th>
                   <th className="px-4 py-3 text-right">Balance</th>

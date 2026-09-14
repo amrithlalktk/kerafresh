@@ -81,7 +81,7 @@ export const TX_HEADER = [
   "Date",
   "Party",
   "Item",
-  "KG",
+  "Weight",
   "Price",
   "Total",
   "Paid",

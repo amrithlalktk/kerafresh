@@ -26,7 +26,7 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-const HEADER = ["Type", "Reference", "Party / Category", "Item", "KG", "Price", "Amount"];
+const HEADER = ["Type", "Reference", "Party / Category", "Item", "Weight", "Price", "Amount"];
 function csvRows(rows: DayRow[]) {
   return rows.map((r) => [
     r.type,
@@ -192,7 +192,7 @@ export default function DayBookPage() {
                 <th className="px-4 py-3">Reference</th>
                 <th className="px-4 py-3">Party / Category</th>
                 <th className="px-4 py-3">Item</th>
-                <th className="px-4 py-3 text-center">KG</th>
+                <th className="px-4 py-3 text-center">Weight</th>
                 <th className="px-4 py-3">Price</th>
                 <th className="px-4 py-3 text-right">Amount</th>
               </tr>

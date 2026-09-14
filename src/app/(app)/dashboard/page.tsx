@@ -390,7 +390,7 @@ export default async function DashboardPage() {
                     <tr>
                       <th className="py-1.5 pr-2">Party</th>
                       <th className="py-1.5 pr-2">Item</th>
-                      <th className="py-1.5 pr-2 text-center">KG</th>
+                      <th className="py-1.5 pr-2 text-center">Weight</th>
                       <th className="py-1.5 pr-2">Rate</th>
                       <th className="py-1.5 text-right">Total</th>
                     </tr>
