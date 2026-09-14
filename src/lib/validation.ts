@@ -78,7 +78,7 @@ const chargeLineSchema = z.object({
   amount: z.number().positive("Charge amount must be greater than 0"),
 });
 
-export const saleSchema = z.object({
+const billSchemaBase = z.object({
   date: z.string().min(1, "Date is required"),
   partyId: z.string().trim().optional().nullable(),
   items: z.array(saleLineSchema).min(1, "Add at least one item"),
@@ -91,7 +91,13 @@ export const saleSchema = z.object({
   notes: z.string().trim().optional().nullable(),
 });
 
-export const purchaseSchema = saleSchema;
+// Sales are numbered by hand (matches a physical bill book) — Purchases
+// keep the auto-incrementing series, so only Sale requires it.
+export const saleSchema = billSchemaBase.extend({
+  billNumber: z.number().int().positive("Bill number must be a positive number"),
+});
+
+export const purchaseSchema = billSchemaBase;
 
 // A single installment recorded against an existing Sale/Purchase.
 export const paymentSchema = z.object({

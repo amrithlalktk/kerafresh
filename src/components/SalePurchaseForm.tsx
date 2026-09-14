@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { formatCents } from "@/lib/money";
 import { FFA_GRADES, type ChargeType, type Item, type Party, type PaymentMethod, type Purchase, type Sale } from "@/lib/types";
@@ -56,6 +56,9 @@ export default function SalePurchaseForm({
   );
 
   const [date, setDate] = useState(initial ? initial.date.slice(0, 10) : todayStr());
+  // Sales are numbered by hand (matches a physical bill book) — Purchases
+  // keep auto-numbering server-side, so this only matters in SALE mode.
+  const [billNumber, setBillNumber] = useState(initial ? String(initial.billNumber) : "");
   const [partyId, setPartyId] = useState(initial?.partyId ?? "");
   const [lines, setLines] = useState<Line[]>(
     initial && initial.items.length > 0
@@ -96,7 +99,26 @@ export default function SalePurchaseForm({
   );
   const totalCents = itemsTotalCents + chargesTotalCents;
 
-  function resetForm() {
+  // Suggest the next bill number for a brand-new sale, so most entries just
+  // continue the existing series — still fully editable for anyone who
+  // needs a specific number (e.g. matching a physical bill book).
+  useEffect(() => {
+    if (mode !== "SALE" || initial) return;
+    let cancelled = false;
+    fetch("/api/sales?pageSize=1&sortBy=billNumber&sortDir=desc")
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        const next = (data.sales?.[0]?.billNumber ?? 0) + 1;
+        setBillNumber(String(next));
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function resetForm(nextBillNumber?: number) {
     setDate(todayStr());
     setPartyId("");
     setLines([emptyLine()]);
@@ -104,6 +126,7 @@ export default function SalePurchaseForm({
     setPaid("");
     setPaymentMethod("CASH");
     setNotes("");
+    if (nextBillNumber !== undefined) setBillNumber(String(nextBillNumber));
   }
 
   function updateLine(index: number, patch: Partial<Line>) {
@@ -139,6 +162,10 @@ export default function SalePurchaseForm({
     e.preventDefault();
     setError(null);
 
+    if (mode === "SALE" && (!billNumber.trim() || Number(billNumber) <= 0)) {
+      setError("Enter a valid bill number");
+      return;
+    }
     const validLines = lines.filter((l) => l.itemId && Number(l.quantity) > 0);
     if (validLines.length === 0) {
       setError("Add at least one item");
@@ -161,6 +188,7 @@ export default function SalePurchaseForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           date,
+          ...(mode === "SALE" ? { billNumber: Number(billNumber) } : {}),
           partyId: partyId || null,
           items: validLines.map((l) => ({
             itemId: l.itemId,
@@ -187,7 +215,7 @@ export default function SalePurchaseForm({
       if (!initial) {
         // Pure add: clear the form so the next row can be typed straight
         // away, instead of closing anything — no popup to reopen.
-        resetForm();
+        resetForm(mode === "SALE" ? Number(billNumber) + 1 : undefined);
       }
       onSaved();
     } finally {
@@ -197,7 +225,21 @@ export default function SalePurchaseForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-      <div className="grid grid-cols-2 gap-2">
+      <div className={`grid items-end gap-2 ${mode === "SALE" ? "grid-cols-3" : "grid-cols-2"}`}>
+        {mode === "SALE" && (
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-black/60 dark:text-white/60">Bill number</label>
+            <input
+              type="number"
+              required
+              min="1"
+              step="1"
+              value={billNumber}
+              onChange={(e) => setBillNumber(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+        )}
         <input
           type="date"
           required

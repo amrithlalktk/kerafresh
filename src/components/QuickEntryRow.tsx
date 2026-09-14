@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatCents } from "@/lib/money";
 import { FFA_GRADES, type Item, type Party } from "@/lib/types";
 import SuggestInput from "@/components/SuggestInput";
@@ -46,6 +46,9 @@ export default function QuickEntryRow({
   const apiBase = mode === "SALE" ? "/api/sales" : "/api/purchases";
 
   const [date, setDate] = useState(todayStr());
+  // Sales are numbered by hand (matches a physical bill book) — Purchases
+  // keep auto-numbering server-side, so this only matters in SALE mode.
+  const [billNumber, setBillNumber] = useState("");
   const [partyName, setPartyName] = useState("");
   const [itemName, setItemName] = useState("");
   const [qty, setQty] = useState("1");
@@ -57,6 +60,23 @@ export default function QuickEntryRow({
   const [error, setError] = useState<string | null>(null);
 
   const itemInputRef = useRef<HTMLInputElement>(null);
+
+  // Suggest the next bill number on mount, so most rows just continue the
+  // existing series — still fully editable.
+  useEffect(() => {
+    if (mode !== "SALE") return;
+    let cancelled = false;
+    fetch("/api/sales?pageSize=1&sortBy=billNumber&sortDir=desc")
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        const next = (data.sales?.[0]?.billNumber ?? 0) + 1;
+        setBillNumber(String(next));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mode]);
 
   const preTaxCents = Math.round((Number(qty) || 0) * (Number(price) || 0) * 100);
   const taxCents = Math.round((preTaxCents * (Number(taxPercent) || 0)) / 100);
@@ -117,6 +137,10 @@ export default function QuickEntryRow({
     setError(null);
     const trimmedItem = itemName.trim();
     const qtyNum = Number(qty);
+    if (mode === "SALE" && (!billNumber.trim() || Number(billNumber) <= 0)) {
+      setError("Enter a valid bill number");
+      return;
+    }
     if (!trimmedItem) {
       setError("Item is required");
       itemInputRef.current?.focus();
@@ -150,6 +174,7 @@ export default function QuickEntryRow({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           date,
+          ...(mode === "SALE" ? { billNumber: Number(billNumber) } : {}),
           partyId,
           items: [
             {
@@ -182,6 +207,7 @@ export default function QuickEntryRow({
       setPrice("");
       setTaxPercent("0");
       setFfaGrade("");
+      if (mode === "SALE") setBillNumber(String(Number(billNumber) + 1));
       onSaved();
       itemInputRef.current?.focus();
     } catch (e) {
@@ -200,8 +226,25 @@ export default function QuickEntryRow({
 
   return (
     <tr className="border-b-2 border-t border-black/10 border-b-black/15 bg-black/[0.025] dark:border-white/10 dark:border-b-white/20 dark:bg-white/[0.04]">
-      <td className="p-1 px-3 align-top text-sm text-black/30 dark:text-white/30" title="Assigned automatically on save">
-        auto
+      <td className="p-1 align-top">
+        {mode === "SALE" ? (
+          <input
+            type="number"
+            min="1"
+            step="1"
+            value={billNumber}
+            onChange={(e) => setBillNumber(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className={`${cellInputClass} ${noSpinnerClass} w-full`}
+          />
+        ) : (
+          <div
+            className="px-3 py-1.5 text-sm text-black/30 dark:text-white/30"
+            title="Assigned automatically on save"
+          >
+            auto
+          </div>
+        )}
       </td>
       <td className="p-1 align-top">
         <input

@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth";
 import { isAdminRole } from "@/lib/types";
 import { saleSchema } from "@/lib/validation";
 import { toCents } from "@/lib/money";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 const SALE_INCLUDE = {
   party: { select: { name: true } },
@@ -58,7 +58,7 @@ export async function PATCH(
   // exists, its paidCents only changes via the payment-history endpoint
   // (POST /api/sales/[id]/payments), so editing item/charge details can
   // never clobber payments already recorded against it.
-  const { date, partyId, items, charges, notes } = parsed.data;
+  const { date, partyId, items, charges, notes, billNumber } = parsed.data;
   const lineData = items.map((line) => {
     const priceCents = toCents(line.price);
     // Quantity is in KG and can be fractional (e.g. 1.5) — round to whole
@@ -84,24 +84,35 @@ export async function PATCH(
     lineData.reduce((sum, l) => sum + l.lineTotalCents + l.taxCents, 0) +
     chargeData.reduce((sum, c) => sum + c.amountCents, 0);
 
-  const sale = await db.$transaction(async (tx) => {
-    await tx.saleItem.deleteMany({ where: { saleId: id } });
-    await tx.saleCharge.deleteMany({ where: { saleId: id } });
-    return tx.sale.update({
-      where: { id },
-      data: {
-        date: new Date(date),
-        partyId: partyId || null,
-        totalCents,
-        notes: notes || null,
-        items: { create: lineData },
-        charges: { create: chargeData },
-      },
-      include: SALE_INCLUDE,
+  try {
+    const sale = await db.$transaction(async (tx) => {
+      await tx.saleItem.deleteMany({ where: { saleId: id } });
+      await tx.saleCharge.deleteMany({ where: { saleId: id } });
+      return tx.sale.update({
+        where: { id },
+        data: {
+          billNumber,
+          date: new Date(date),
+          partyId: partyId || null,
+          totalCents,
+          notes: notes || null,
+          items: { create: lineData },
+          charges: { create: chargeData },
+        },
+        include: SALE_INCLUDE,
+      });
     });
-  });
 
-  return NextResponse.json(sale);
+    return NextResponse.json(sale);
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return NextResponse.json(
+        { error: `Bill #${billNumber} is already in use — pick a different number.` },
+        { status: 409 }
+      );
+    }
+    throw err;
+  }
 }
 
 export async function DELETE(

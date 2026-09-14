@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth";
 import { saleSchema } from "@/lib/validation";
 import { toCents } from "@/lib/money";
 import { getAvailableAdvanceForSalesMap } from "@/lib/balances";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 const PAGE_SIZE = 25;
 const SALE_INCLUDE = {
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { date, partyId, items, charges, paid, advanceAppliedCents, paymentMethod, notes } =
+  const { date, partyId, items, charges, paid, advanceAppliedCents, paymentMethod, notes, billNumber } =
     parsed.data;
 
   if (advanceAppliedCents > 0) {
@@ -135,8 +135,6 @@ export async function POST(request: Request) {
 
   const paidCents = toCents(paid);
   const cashPaidCents = Math.max(0, paidCents - advanceAppliedCents);
-  const lastBill = await db.sale.aggregate({ _max: { billNumber: true } });
-  const billNumber = (lastBill._max.billNumber ?? 0) + 1;
   // "Paid now" on creation becomes the first entry(ies) in the payment
   // history, so it shows up alongside any installments added later — split
   // into an ADVANCE-sourced entry (already-received money, just applied to
@@ -157,22 +155,32 @@ export async function POST(request: Request) {
       ? [{ date: new Date(date), amountCents: cashPaidCents, paymentMethod }]
       : []),
   ];
-  const sale = await db.sale.create({
-    data: {
-      billNumber,
-      date: new Date(date),
-      partyId: partyId || null,
-      totalCents,
-      paidCents,
-      paymentMethod,
-      notes: notes || null,
-      userId: session.userId,
-      items: { create: lineData },
-      charges: { create: chargeData },
-      payments: paymentData.length > 0 ? { create: paymentData } : undefined,
-    },
-    include: SALE_INCLUDE,
-  });
+  try {
+    const sale = await db.sale.create({
+      data: {
+        billNumber,
+        date: new Date(date),
+        partyId: partyId || null,
+        totalCents,
+        paidCents,
+        paymentMethod,
+        notes: notes || null,
+        userId: session.userId,
+        items: { create: lineData },
+        charges: { create: chargeData },
+        payments: paymentData.length > 0 ? { create: paymentData } : undefined,
+      },
+      include: SALE_INCLUDE,
+    });
 
-  return NextResponse.json(sale);
+    return NextResponse.json(sale);
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return NextResponse.json(
+        { error: `Bill #${billNumber} is already in use — pick a different number.` },
+        { status: 409 }
+      );
+    }
+    throw err;
+  }
 }
