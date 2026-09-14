@@ -71,6 +71,7 @@ export default function RecordPaymentForm({
     width: number;
   } | null>(null);
   const billQueryInputRef = useRef<HTMLInputElement | null>(null);
+  const billResultsListRef = useRef<HTMLUListElement | null>(null);
 
   const editingId = editingPayment?.id ?? null;
 
@@ -95,6 +96,22 @@ export default function RecordPaymentForm({
       window.removeEventListener("scroll", updatePosition, true);
       window.removeEventListener("resize", updatePosition);
     };
+  }, [billResults.length]);
+
+  // The list can appear without the input ever being focused (see the
+  // auto-load effect below), so a blur-based close alone can't dismiss it —
+  // a click anywhere outside both the input and the list itself closes it,
+  // covering that case too.
+  useEffect(() => {
+    if (billResults.length === 0) return;
+    function handleClickOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      if (billQueryInputRef.current?.contains(target)) return;
+      if (billResultsListRef.current?.contains(target)) return;
+      setBillResults([]);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [billResults.length]);
 
   useEffect(() => {
@@ -268,6 +285,16 @@ export default function RecordPaymentForm({
             ref={billQueryInputRef}
             value={billQuery}
             onChange={(e) => searchBills(e.target.value)}
+            onFocus={() => fetchBills(billQuery)}
+            onBlur={() => {
+              // Delay so a result's onClick still fires before the list
+              // hides — a plain blur would close it first and swallow the
+              // click.
+              window.setTimeout(() => setBillResults([]), 150);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setBillResults([]);
+            }}
             placeholder={
               lockPartyId ? "Showing all bills — type an item name to narrow…" : "Type a party name…"
             }
@@ -278,6 +305,7 @@ export default function RecordPaymentForm({
             billResultsRect &&
             createPortal(
               <ul
+                ref={billResultsListRef}
                 style={{
                   position: "fixed",
                   top: billResultsRect.top + 4,
