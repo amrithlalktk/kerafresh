@@ -241,7 +241,7 @@ export default function PurchasePage() {
                     <td className="px-2 py-3 text-center">
                       <div className="flex flex-col gap-0.5">
                         {purchase.items.map((l) => (
-                          <span key={l.id}>{l.quantity}</span>
+                          <span key={l.id}>{l.quantity} kg</span>
                         ))}
                       </div>
                     </td>
