@@ -5,6 +5,7 @@ import { formatBillNumber, formatCents } from "@/lib/money";
 import { formatBillDate } from "@/lib/date";
 import { paymentMethodLabel } from "@/lib/types";
 import { COMPANY } from "@/lib/company";
+import { displayUnit } from "@/lib/units";
 import PrintButton from "@/components/PrintButton";
 
 export default async function PrintSalePage({
@@ -79,7 +80,7 @@ export default async function PrintSalePage({
                 {l.ffaGrade && <span className="text-black/50"> ({l.ffaGrade})</span>}
               </td>
               <td className="py-2 text-right">
-                {l.quantity} {l.item.unit}
+                {l.quantity} {displayUnit(l.item.unit)}
               </td>
               <td className="py-2 text-right">{formatCents(l.priceCents)}</td>
               <td className="py-2 text-right">
