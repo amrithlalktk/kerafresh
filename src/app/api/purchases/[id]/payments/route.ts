@@ -122,7 +122,10 @@ export async function POST(
           party: { select: { name: true } },
           items: { include: { item: { select: { name: true, unit: true } } } },
           charges: true,
-          payments: { orderBy: { date: "asc" } },
+          payments: {
+            orderBy: { date: "asc" },
+            include: { excessPartyPayment: { select: { amountCents: true } } },
+          },
           recordedBy: { select: { name: true } },
         },
       });

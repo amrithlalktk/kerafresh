@@ -88,6 +88,11 @@ export type PartyPayment = {
   amountCents: number;
   paymentMethod: PaymentMethod;
   notes: string | null;
+  // Set when this row is the excess half of a specific bill payment (see
+  // PartyPayment.sourceSalePayment/sourcePurchasePayment in the schema) —
+  // buildLedger uses this to avoid showing it a second time.
+  sourceSalePaymentId: string | null;
+  sourcePurchasePaymentId: string | null;
 };
 
 // One row of GET /api/payments — a Sale/Purchase installment or a Party
@@ -161,6 +166,12 @@ export type PaymentLine = {
   paymentMethod: PaymentMethod;
   source: PaymentSource;
   notes: string | null;
+  // Set when this payment overshot the bill's due amount — the excess that
+  // was carved off into advance credit for another bill (see
+  // PartyPayment.sourceSalePayment/sourcePurchasePayment). The cash actually
+  // handed over was amountCents + this, even though only amountCents counts
+  // toward this bill.
+  excessPartyPayment: { amountCents: number } | null;
 };
 
 export type Sale = {

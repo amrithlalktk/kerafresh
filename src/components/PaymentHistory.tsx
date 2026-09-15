@@ -62,7 +62,8 @@ export default function PaymentHistory({
   }
 
   async function handleDeletePayment(payment: PaymentLine) {
-    if (!confirm(`Remove the ${formatCents(payment.amountCents)} payment on ${formatDate(payment.date)}?`))
+    const receivedCents = payment.amountCents + (payment.excessPartyPayment?.amountCents ?? 0);
+    if (!confirm(`Remove the ${formatCents(receivedCents)} payment on ${formatDate(payment.date)}?`))
       return;
     const res = await fetch(`${apiBase}/payments/${payment.id}`, { method: "DELETE" });
     if (res.ok) onChange();
@@ -83,10 +84,16 @@ export default function PaymentHistory({
 
       {payments.length > 0 ? (
         <ul className="flex flex-col gap-1 text-sm">
-          {payments.map((p) => (
+          {payments.map((p) => {
+            const excessCents = p.excessPartyPayment?.amountCents ?? 0;
+            const receivedCents = p.amountCents + excessCents;
+            return (
             <li key={p.id} className="flex items-center justify-between rounded-md bg-white px-3 py-1.5 dark:bg-white/5">
               <span>
-                {formatCents(p.amountCents)} given on {formatDate(p.date)}
+                {/* The full amount actually handed over — when part of it overshot this
+                    bill, that's the main figure, with the split explained in brackets,
+                    not just the amount that landed on this bill. */}
+                {formatCents(receivedCents)} given on {formatDate(p.date)}
                 <span className="ml-2 text-xs text-black/50 dark:text-white/50">
                   {paymentMethodLabel(p.paymentMethod)}
                 </span>
@@ -95,10 +102,17 @@ export default function PaymentHistory({
                     from advance credit
                   </span>
                 )}
-                {p.notes && (
+                {excessCents > 0 ? (
                   <span className="block text-xs text-black/50 dark:text-white/50">
-                    ({p.notes})
+                    ({formatCents(p.amountCents)} applied to this bill, {formatCents(excessCents)}{" "}
+                    added as advance for the next bill)
                   </span>
+                ) : (
+                  p.notes && (
+                    <span className="block text-xs text-black/50 dark:text-white/50">
+                      ({p.notes})
+                    </span>
+                  )
                 )}
               </span>
               {canDelete && (
@@ -112,7 +126,8 @@ export default function PaymentHistory({
                 </button>
               )}
             </li>
-          ))}
+            );
+          })}
         </ul>
       ) : (
         <p className="text-sm text-black/50 dark:text-white/50">No payments recorded yet.</p>

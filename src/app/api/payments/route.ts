@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { formatCents } from "@/lib/money";
 
 const PAGE_SIZE = 25;
 
@@ -56,9 +57,13 @@ export async function GET(request: Request) {
         ...(hasDateFilter ? { date: dateFilter } : {}),
         ...(partyId ? { sale: { partyId } } : {}),
       },
-      include: { sale: { select: { id: true, billNumber: true, partyId: true, party: { select: { name: true } } } } },
+      include: {
+        sale: { select: { id: true, billNumber: true, partyId: true, party: { select: { name: true } } } },
+        excessPartyPayment: { select: { amountCents: true } },
+      },
     });
     for (const p of rows) {
+      const excessCents = p.excessPartyPayment?.amountCents ?? 0;
       combined.push({
         id: p.id,
         kind: "SALE",
@@ -67,10 +72,16 @@ export async function GET(request: Request) {
         partyName: p.sale.party?.name ?? "Cash sale",
         billNumber: p.sale.billNumber,
         refId: p.sale.id,
-        amountCents: p.amountCents,
+        // The full amount actually received — when part of it overshot this
+        // bill, that's the whole point of the note below, not just the
+        // amount that landed on this bill.
+        amountCents: p.amountCents + excessCents,
         direction: null,
         paymentMethod: p.paymentMethod,
-        notes: p.notes,
+        notes:
+          excessCents > 0
+            ? `${formatCents(p.amountCents)} applied to this bill, ${formatCents(excessCents)} added as advance for the next bill`
+            : p.notes,
       });
     }
   }
@@ -83,9 +94,11 @@ export async function GET(request: Request) {
       },
       include: {
         purchase: { select: { id: true, billNumber: true, partyId: true, party: { select: { name: true } } } },
+        excessPartyPayment: { select: { amountCents: true } },
       },
     });
     for (const p of rows) {
+      const excessCents = p.excessPartyPayment?.amountCents ?? 0;
       combined.push({
         id: p.id,
         kind: "PURCHASE",
@@ -94,10 +107,13 @@ export async function GET(request: Request) {
         partyName: p.purchase.party?.name ?? "—",
         billNumber: p.purchase.billNumber,
         refId: p.purchase.id,
-        amountCents: p.amountCents,
+        amountCents: p.amountCents + excessCents,
         direction: null,
         paymentMethod: p.paymentMethod,
-        notes: p.notes,
+        notes:
+          excessCents > 0
+            ? `${formatCents(p.amountCents)} applied to this bill, ${formatCents(excessCents)} added as advance for the next bill`
+            : p.notes,
       });
     }
   }
@@ -111,6 +127,9 @@ export async function GET(request: Request) {
       include: { party: { select: { name: true } } },
     });
     for (const p of rows) {
+      // Already represented by the bill payment that created it (see the
+      // SALE/PURCHASE loops above) — listing it again here would double it.
+      if (p.sourceSalePaymentId || p.sourcePurchasePaymentId) continue;
       combined.push({
         id: p.id,
         kind: "ADVANCE",
