@@ -13,7 +13,15 @@ import type { Prisma } from "@prisma/client";
 // so it sees that change plus anything already sitting unapplied.
 export async function sweepAdvanceIntoOutstandingSales(
   tx: Prisma.TransactionClient,
-  partyId: string
+  partyId: string,
+  // Shown on each ADVANCE SalePayment this creates — callers that just
+  // caused a specific overpayment pass something more useful than the
+  // generic default (see POST .../sales/[id]/payments), so a bill that gets
+  // settled this way says where the money actually came from. Only exact
+  // for the credit created in the same request; if this sweep also spends
+  // older unrelated leftover credit in the same pass, that older portion
+  // gets labeled with this note too even though it doesn't apply to it.
+  reasonNote = "Settled from advance credit"
 ) {
   const [receivedTotal, paidTotal, advanceSourcedTotal] = await Promise.all([
     tx.partyPayment.aggregate({
@@ -53,7 +61,7 @@ export async function sweepAdvanceIntoOutstandingSales(
         date: new Date(),
         amountCents: applyCents,
         source: "ADVANCE",
-        notes: "Settled from advance credit",
+        notes: reasonNote,
       },
     });
     await tx.sale.update({
@@ -67,7 +75,8 @@ export async function sweepAdvanceIntoOutstandingSales(
 // Mirror of sweepAdvanceIntoOutstandingSales for the Purchase side.
 export async function sweepAdvanceIntoOutstandingPurchases(
   tx: Prisma.TransactionClient,
-  partyId: string
+  partyId: string,
+  reasonNote = "Settled from advance credit"
 ) {
   const [paidTotal, receivedTotal, advanceSourcedTotal] = await Promise.all([
     tx.partyPayment.aggregate({
@@ -107,7 +116,7 @@ export async function sweepAdvanceIntoOutstandingPurchases(
         date: new Date(),
         amountCents: applyCents,
         source: "ADVANCE",
-        notes: "Settled from advance credit",
+        notes: reasonNote,
       },
     });
     await tx.purchase.update({

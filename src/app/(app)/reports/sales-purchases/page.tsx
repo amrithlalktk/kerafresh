@@ -10,6 +10,7 @@ import { downloadReportCsv, downloadReportPdf } from "@/lib/reportExport";
 import {
   TX_HEADER,
   TX_TAX_HEADER,
+  paymentRemarks,
   taxLineCsvRows,
   txCsvRows,
   useDefaultDateRange,
@@ -91,6 +92,7 @@ export default function SalesPurchasesReportPage() {
         totalCents: s.totalCents,
         paidCents: s.paidCents,
         taxCents: s.items.reduce((sum, l) => sum + l.taxCents, 0),
+        remarks: paymentRemarks(s.payments),
       })),
       ...purchases.map((p): TxRow => ({
         id: p.id,
@@ -106,6 +108,7 @@ export default function SalesPurchasesReportPage() {
         totalCents: p.totalCents,
         paidCents: p.paidCents,
         taxCents: p.items.reduce((sum, l) => sum + l.taxCents, 0),
+        remarks: paymentRemarks(p.payments),
       })),
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -381,6 +384,7 @@ export default function SalesPurchasesReportPage() {
                   <th className="px-4 py-3">Price</th>
                   <th className="px-4 py-3 text-right">Total</th>
                   <th className="px-4 py-3 text-right">Balance</th>
+                  <th className="px-4 py-3">Remarks</th>
                 </tr>
               </thead>
               <tbody>
@@ -435,12 +439,15 @@ export default function SalesPurchasesReportPage() {
                       >
                         {balance > 0 ? formatCents(balance) : "Paid"}
                       </td>
+                      <td className="px-4 py-3 text-xs text-black/60 dark:text-white/60">
+                        {r.remarks}
+                      </td>
                     </tr>
                   );
                 })}
                 {!txLoading && txRows.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-4 py-6 text-center text-black/50 dark:text-white/50">
+                    <td colSpan={10} className="px-4 py-6 text-center text-black/50 dark:text-white/50">
                       No sales or purchases match these filters.
                     </td>
                   </tr>

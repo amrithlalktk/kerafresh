@@ -5,6 +5,7 @@ import { formatBillNumber, formatCents } from "@/lib/money";
 import Card from "@/components/Card";
 import SummaryCard from "@/components/SummaryCard";
 import { downloadReportCsv, downloadReportPdf } from "@/lib/reportExport";
+import { paymentRemarks } from "@/lib/reportHelpers";
 import type { Expense, Purchase, Sale } from "@/lib/types";
 import BillPreviewModal, { type PreviewBillType } from "@/components/BillPreviewModal";
 import EmailPdfButton from "@/components/EmailPdfButton";
@@ -19,6 +20,8 @@ type DayRow = {
   items: DayRowItem[];
   detail: string;
   amountCents: number;
+  // Empty for Expense rows — no payments to explain.
+  remarks: string;
   // Undefined for Expense rows — no bill to preview.
   bill?: { type: PreviewBillType; id: string };
 };
@@ -27,7 +30,16 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-const HEADER = ["Type", "Reference", "Party / Category", "Item", "Weight", "Price", "Amount"];
+const HEADER = [
+  "Type",
+  "Reference",
+  "Party / Category",
+  "Item",
+  "Weight",
+  "Price",
+  "Amount",
+  "Remarks",
+];
 function csvRows(rows: DayRow[]) {
   return rows.map((r) => [
     r.type,
@@ -37,6 +49,7 @@ function csvRows(rows: DayRow[]) {
     r.items.map((i) => i.quantity).join("; "),
     r.items.map((i) => (i.priceCents / 100).toFixed(2)).join("; "),
     (r.amountCents / 100).toFixed(2),
+    r.remarks,
   ]);
 }
 
@@ -78,6 +91,7 @@ export default function DayBookPage() {
         })),
         detail: "",
         amountCents: s.totalCents,
+        remarks: paymentRemarks(s.payments),
         bill: { type: "SALE", id: s.id },
       })),
       ...purchases.map((p): DayRow => ({
@@ -91,6 +105,7 @@ export default function DayBookPage() {
         })),
         detail: "",
         amountCents: p.totalCents,
+        remarks: paymentRemarks(p.payments),
         bill: { type: "PURCHASE", id: p.id },
       })),
       ...expenses.map((e): DayRow => ({
@@ -100,6 +115,7 @@ export default function DayBookPage() {
         items: [],
         detail: e.description,
         amountCents: e.amountCents,
+        remarks: e.notes ?? "",
       })),
     ];
 
@@ -206,6 +222,7 @@ export default function DayBookPage() {
                 <th className="px-4 py-3 text-center">Weight</th>
                 <th className="px-4 py-3">Price</th>
                 <th className="px-4 py-3 text-right">Amount</th>
+                <th className="px-4 py-3">Remarks</th>
               </tr>
             </thead>
             <tbody>
@@ -270,11 +287,14 @@ export default function DayBookPage() {
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     {formatCents(r.amountCents)}
                   </td>
+                  <td className="px-4 py-3 text-xs text-black/60 dark:text-white/60">
+                    {r.remarks}
+                  </td>
                 </tr>
               ))}
               {!loading && rows.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-black/50 dark:text-white/50">
+                  <td colSpan={8} className="px-4 py-6 text-center text-black/50 dark:text-white/50">
                     Nothing recorded on this day.
                   </td>
                 </tr>

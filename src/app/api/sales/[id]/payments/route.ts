@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { isAdminRole } from "@/lib/types";
 import { paymentSchema } from "@/lib/validation";
-import { formatBillNumber, toCents } from "@/lib/money";
+import { formatBillNumber, formatCents, toCents } from "@/lib/money";
 import { sweepAdvanceIntoOutstandingSales } from "@/lib/balances";
 
 async function canModify(userId: string, isAdmin: boolean, saleId: string) {
@@ -51,6 +51,14 @@ export async function POST(
       const billPortionCents = existing.partyId ? Math.min(amountCents, dueCents) : amountCents;
       const excessCents = amountCents - billPortionCents;
 
+      // When the payment exceeds what's due, both halves say so — otherwise
+      // this bill's history only shows the capped amount actually applied
+      // here, with no sign that more cash than that changed hands.
+      const splitNote =
+        excessCents > 0
+          ? `${formatCents(amountCents)} received — ${formatCents(excessCents)} applied as advance to next bill`
+          : null;
+
       let billPayment = null;
       if (billPortionCents > 0) {
         billPayment = await tx.salePayment.create({
@@ -59,7 +67,7 @@ export async function POST(
             date: new Date(date),
             amountCents: billPortionCents,
             paymentMethod,
-            notes: notes || null,
+            notes: [notes, splitNote].filter(Boolean).join(" — ") || null,
           },
         });
       }
@@ -95,7 +103,13 @@ export async function POST(
       // already sitting unapplied from before — immediately reduces their
       // OTHER outstanding sales too, not just bills created from here on.
       if (existing.partyId) {
-        await sweepAdvanceIntoOutstandingSales(tx, existing.partyId);
+        await sweepAdvanceIntoOutstandingSales(
+          tx,
+          existing.partyId,
+          excessCents > 0
+            ? `${formatCents(amountCents)} paid on Sale #${formatBillNumber(existing.billNumber)} — ${formatCents(billPortionCents)} to that bill, ${formatCents(excessCents)} as advance here`
+            : undefined
+        );
       }
 
       return tx.sale.findUniqueOrThrow({

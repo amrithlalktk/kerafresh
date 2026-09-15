@@ -1,7 +1,19 @@
 import { useEffect, useState } from "react";
 import { formatBillNumber } from "@/lib/money";
 import { formatDate } from "@/lib/date";
-import type { Expense } from "@/lib/types";
+import type { Expense, PaymentLine } from "@/lib/types";
+
+// Joins whatever explanatory notes a bill's payments carry (e.g. the
+// "X paid — Y applied as advance to next bill" / "From X overpayment on
+// Bill #Y" notes set in the sales/purchases payments routes and the advance
+// sweep) into one cell, so reports carry the same split explanation the
+// on-screen payment history shows.
+export function paymentRemarks(payments: PaymentLine[]) {
+  return payments
+    .map((p) => p.notes)
+    .filter((n): n is string => Boolean(n))
+    .join(" | ");
+}
 
 export type TxType = "SALE" | "PURCHASE";
 export type TxRowItem = { name: string; quantity: number; priceCents: number };
@@ -15,6 +27,7 @@ export type TxRow = {
   totalCents: number;
   paidCents: number;
   taxCents: number;
+  remarks: string;
 };
 
 // One row per taxed item line (not per bill) — a single bill can mix items
@@ -86,6 +99,7 @@ export const TX_HEADER = [
   "Total",
   "Paid",
   "Balance",
+  "Remarks",
 ];
 export function txCsvRows(rows: TxRow[]) {
   return rows.map((r) => [
@@ -99,6 +113,7 @@ export function txCsvRows(rows: TxRow[]) {
     (r.totalCents / 100).toFixed(2),
     (r.paidCents / 100).toFixed(2),
     ((r.totalCents - r.paidCents) / 100).toFixed(2),
+    r.remarks,
   ]);
 }
 

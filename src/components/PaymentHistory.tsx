@@ -95,6 +95,11 @@ export default function PaymentHistory({
                     from advance credit
                   </span>
                 )}
+                {p.notes && (
+                  <span className="block text-xs text-black/50 dark:text-white/50">
+                    ({p.notes})
+                  </span>
+                )}
               </span>
               {canDelete && (
                 <button
