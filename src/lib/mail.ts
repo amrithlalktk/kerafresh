@@ -1,4 +1,17 @@
 import nodemailer from "nodemailer";
+import { z } from "zod";
+
+const emailListSchema = z.array(z.string().trim().email()).min(1);
+
+// Picks who a PDF-send goes to: an explicit list from the recipient picker
+// (EmailPdfButton) if one was sent, else the viewer's own saved
+// notifyEmails as a fallback. Returns null when neither is usable, so
+// callers can 400 instead of silently emailing no one.
+export function resolveRecipients(bodyTo: unknown, fallback: string | null) {
+  const parsed = emailListSchema.safeParse(bodyTo);
+  if (parsed.success) return parsed.data.join(", ");
+  return fallback;
+}
 
 // Reads SMTP creds from .env. Until those are set, this logs the email to
 // the server console instead of sending it — lets the reset-password flow

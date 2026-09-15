@@ -127,6 +127,12 @@ export type ChargeType = {
   name: string;
 };
 
+export type EmailContact = {
+  id: string;
+  name: string;
+  email: string;
+};
+
 export type SaleItemLine = {
   id: string;
   itemId: string;
@@ -162,7 +168,7 @@ export type Sale = {
   billNumber: number;
   date: string;
   partyId: string | null;
-  party: { name: string } | null;
+  party: { name: string; email: string | null } | null;
   items: SaleItemLine[];
   charges: ChargeLine[];
   payments: PaymentLine[];
@@ -190,7 +196,7 @@ export type Purchase = {
   billNumber: number;
   date: string;
   partyId: string | null;
-  party: { name: string } | null;
+  party: { name: string; email: string | null } | null;
   items: PurchaseItemLine[];
   charges: ChargeLine[];
   payments: PaymentLine[];

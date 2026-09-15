@@ -154,6 +154,9 @@ export default function BillPreviewModal({
               <EmailPdfButton
                 endpoint={`/api/print/${billType === "SALE" ? "sale" : "purchase"}/${bill.id}/email`}
                 className="text-sm underline underline-offset-4"
+                defaultRecipient={
+                  bill.party?.email ? { name: bill.party.name, email: bill.party.email } : null
+                }
               />
             </div>
           </>

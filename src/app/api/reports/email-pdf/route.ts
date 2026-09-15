@@ -3,13 +3,14 @@ import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getReportPdfBuffer } from "@/lib/reportExport";
-import { sendMail } from "@/lib/mail";
+import { resolveRecipients, sendMail } from "@/lib/mail";
 
 const schema = z.object({
   filename: z.string().min(1),
   title: z.string().min(1),
   header: z.array(z.string()),
   rows: z.array(z.array(z.string())),
+  to: z.unknown().optional(),
 });
 
 // Generic — every report page already builds the same {title, header, rows}
@@ -18,17 +19,6 @@ const schema = z.object({
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const user = await db.user.findUnique({
-    where: { id: session.userId },
-    select: { notifyEmails: true },
-  });
-  if (!user?.notifyEmails) {
-    return NextResponse.json(
-      { error: "Set your notification email first in Account settings." },
-      { status: 400 }
-    );
-  }
 
   const body = await request.json();
   const parsed = schema.safeParse(body);
@@ -39,15 +29,27 @@ export async function POST(request: Request) {
     );
   }
 
+  const user = await db.user.findUnique({
+    where: { id: session.userId },
+    select: { notifyEmails: true },
+  });
+  const to = resolveRecipients(parsed.data.to, user?.notifyEmails ?? null);
+  if (!to) {
+    return NextResponse.json(
+      { error: "Pick at least one recipient, or set your notification email in Account settings." },
+      { status: 400 }
+    );
+  }
+
   const { filename, title, header, rows } = parsed.data;
   const pdf = getReportPdfBuffer({ title, header, rows, generatedBy: session.name });
 
   await sendMail({
-    to: user.notifyEmails,
+    to,
     subject: title,
     text: `Attached: ${title}.`,
     attachments: [{ filename, content: pdf, contentType: "application/pdf" }],
   });
 
-  return NextResponse.json({ ok: true, sentTo: user.notifyEmails });
+  return NextResponse.json({ ok: true, sentTo: to });
 }

@@ -38,7 +38,12 @@ export default async function PrintSalePage({
           Back to Sale
         </a>
         <div className="flex items-center gap-2">
-          <EmailPdfButton endpoint={`/api/print/sale/${sale.id}/email`} />
+          <EmailPdfButton
+            endpoint={`/api/print/sale/${sale.id}/email`}
+            defaultRecipient={
+              sale.party?.email ? { name: sale.party.name, email: sale.party.email } : null
+            }
+          />
           <PrintButton />
         </div>
       </div>

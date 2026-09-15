@@ -359,3 +359,15 @@ model NoteSheet {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// A standalone address-book entry for the "Email PDF" recipient picker —
+// for someone who should receive bills/reports but isn't a Party (e.g. an
+// accountant, or the owner's own second inbox). Shared across the whole
+// team like Party, not scoped to one user. Party.email covers the other
+// half of the picker's search (see /api/email-contacts and EmailPdfButton).
+model EmailContact {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  createdAt DateTime @default(now())
+}

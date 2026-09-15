@@ -62,6 +62,11 @@ export const chargeTypeSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
 });
 
+export const emailContactSchema = z.object({
+  name: z.string().trim().min(1, "Name is required"),
+  email: z.string().trim().email("Enter a valid email"),
+});
+
 const saleLineSchema = z.object({
   itemId: z.string().min(1, "Item is required"),
   // Not integer-only — quantities are in KG, so fractional amounts like 1.5
