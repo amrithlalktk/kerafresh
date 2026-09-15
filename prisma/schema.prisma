@@ -65,8 +65,10 @@ model User {
   createdAt    DateTime      @default(now())
   // Where this user's one-click "Email PDF" sends bills/reports — separate
   // from their login `email` so it can point at e.g. an accountant's inbox.
-  // Null until they set it in Account settings.
-  notifyEmail  String?
+  // Comma-separated for multiple recipients (passed straight through as the
+  // mail `to` header, which accepts that natively). Null until they set it
+  // in Account settings.
+  notifyEmails String?
   transactions        Transaction[]
   sales               Sale[]
   purchases           Purchase[]

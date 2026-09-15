@@ -21,9 +21,9 @@ export async function POST(request: Request) {
 
   const user = await db.user.findUnique({
     where: { id: session.userId },
-    select: { notifyEmail: true },
+    select: { notifyEmails: true },
   });
-  if (!user?.notifyEmail) {
+  if (!user?.notifyEmails) {
     return NextResponse.json(
       { error: "Set your notification email first in Account settings." },
       { status: 400 }
@@ -43,11 +43,11 @@ export async function POST(request: Request) {
   const pdf = getReportPdfBuffer({ title, header, rows, generatedBy: session.name });
 
   await sendMail({
-    to: user.notifyEmail,
+    to: user.notifyEmails,
     subject: title,
     text: `Attached: ${title}.`,
     attachments: [{ filename, content: pdf, contentType: "application/pdf" }],
   });
 
-  return NextResponse.json({ ok: true, sentTo: user.notifyEmail });
+  return NextResponse.json({ ok: true, sentTo: user.notifyEmails });
 }

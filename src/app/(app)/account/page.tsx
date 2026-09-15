@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Card from "@/components/Card";
 
 export default function AccountPage() {
-  const [notifyEmail, setNotifyEmail] = useState("");
+  const [notifyEmails, setNotifyEmails] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -14,7 +14,7 @@ export default function AccountPage() {
     fetch("/api/auth/me")
       .then((res) => res.json())
       .then((d) => {
-        setNotifyEmail(d.notifyEmail ?? "");
+        setNotifyEmails(d.notifyEmails ?? "");
         setLoaded(true);
       });
   }, []);
@@ -28,13 +28,14 @@ export default function AccountPage() {
       const res = await fetch("/api/auth/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notifyEmail: notifyEmail.trim() || null }),
+        body: JSON.stringify({ notifyEmails: notifyEmails.trim() || null }),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Could not save");
         return;
       }
+      setNotifyEmails(data.notifyEmails ?? "");
       setSaved(true);
     } finally {
       setSaving(false);
@@ -50,14 +51,16 @@ export default function AccountPage() {
           <form onSubmit={handleSave} className="flex flex-wrap items-end gap-2">
             <div className="flex flex-col gap-1">
               <label className="text-xs text-black/60 dark:text-white/60">
-                Where the &quot;Email PDF&quot; button sends bills and reports
+                Where the &quot;Email PDF&quot; button sends bills and reports — separate
+                multiple addresses with commas
               </label>
               <input
                 type="email"
-                placeholder="you@example.com"
-                value={notifyEmail}
-                onChange={(e) => setNotifyEmail(e.target.value)}
-                className="w-64 rounded-md border border-black/15 px-2 py-1.5 text-sm dark:border-white/15 dark:bg-transparent"
+                multiple
+                placeholder="you@example.com, accountant@example.com"
+                value={notifyEmails}
+                onChange={(e) => setNotifyEmails(e.target.value)}
+                className="w-96 rounded-md border border-black/15 px-2 py-1.5 text-sm dark:border-white/15 dark:bg-transparent"
               />
             </div>
             <button

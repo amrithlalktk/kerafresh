@@ -14,9 +14,9 @@ export async function POST(
 
   const user = await db.user.findUnique({
     where: { id: session.userId },
-    select: { notifyEmail: true },
+    select: { notifyEmails: true },
   });
-  if (!user?.notifyEmail) {
+  if (!user?.notifyEmails) {
     return NextResponse.json(
       { error: "Set your notification email first in Account settings." },
       { status: 400 }
@@ -38,11 +38,11 @@ export async function POST(
   const filename = `purchase_${formatBillNumber(purchase.billNumber)}.pdf`;
 
   await sendMail({
-    to: user.notifyEmail,
+    to: user.notifyEmails,
     subject: `Purchase Bill #${formatBillNumber(purchase.billNumber)}`,
     text: `Attached: Purchase Bill #${formatBillNumber(purchase.billNumber)}.`,
     attachments: [{ filename, content: pdf, contentType: "application/pdf" }],
   });
 
-  return NextResponse.json({ ok: true, sentTo: user.notifyEmail });
+  return NextResponse.json({ ok: true, sentTo: user.notifyEmails });
 }
