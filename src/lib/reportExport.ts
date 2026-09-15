@@ -46,14 +46,15 @@ export function downloadReportCsv({
   downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8;" }), filename);
 }
 
-export function downloadReportPdf({
-  filename,
+// Builds the jsPDF document itself, with no browser dependency (no
+// `document`/`URL` calls) — shared by the browser download below and by
+// getReportPdfBuffer, which runs server-side to email the same PDF.
+export function buildReportPdfDoc({
   title,
   header,
   rows,
   generatedBy,
 }: {
-  filename: string;
   title: string;
   header: string[];
   rows: string[][];
@@ -94,5 +95,29 @@ export function downloadReportPdf({
     headStyles: { fillColor: [30, 34, 49] },
   });
 
-  doc.save(filename);
+  return doc;
+}
+
+export function downloadReportPdf({
+  filename,
+  ...opts
+}: {
+  filename: string;
+  title: string;
+  header: string[];
+  rows: string[][];
+  generatedBy: string;
+}) {
+  buildReportPdfDoc(opts).save(filename);
+}
+
+// Server-side counterpart of downloadReportPdf — same document, returned as
+// a Buffer instead of triggering a browser download, for emailing.
+export function getReportPdfBuffer(opts: {
+  title: string;
+  header: string[];
+  rows: string[][];
+  generatedBy: string;
+}) {
+  return Buffer.from(buildReportPdfDoc(opts).output("arraybuffer"));
 }

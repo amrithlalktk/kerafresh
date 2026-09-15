@@ -55,8 +55,9 @@ export async function POST(
       const billPortionCents = existing.partyId ? Math.min(amountCents, dueCents) : amountCents;
       const excessCents = amountCents - billPortionCents;
 
+      let billPayment = null;
       if (billPortionCents > 0) {
-        await tx.purchasePayment.create({
+        billPayment = await tx.purchasePayment.create({
           data: {
             purchaseId: id,
             date: new Date(date),
@@ -67,6 +68,10 @@ export async function POST(
         });
       }
       if (excessCents > 0 && existing.partyId) {
+        // Linked back to the bill payment that created it (when there is
+        // one) so deleting that payment later cascades this credit away too,
+        // instead of leaving it behind still applied to some other bill —
+        // see PartyPayment.sourcePurchasePayment.
         await tx.partyPayment.create({
           data: {
             partyId: existing.partyId,
@@ -76,6 +81,7 @@ export async function POST(
             paymentMethod,
             notes: `Excess payment on Purchase #${formatBillNumber(existing.billNumber)} — added as advance credit`,
             userId: session.userId,
+            sourcePurchasePaymentId: billPayment?.id,
           },
         });
       }

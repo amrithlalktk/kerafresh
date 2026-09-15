@@ -118,6 +118,61 @@ export async function sweepAdvanceIntoOutstandingPurchases(
   }
 }
 
+// Clears out any ADVANCE-sourced Sale/Purchase payments for a party and
+// recomputes those bills' paidCents from their remaining payments, then
+// re-runs the sweep so it reapplies whatever advance is actually available
+// now. Needed whenever a PartyPayment — the sole funding source of the
+// advance pool — is deleted or changed, since sweepAdvanceIntoOutstandingSales
+// / Purchases only ever adds new ADVANCE applications and never removes stale
+// ones left behind by a payment that shrank or no longer exists. The pool
+// isn't attributed per-source-payment, so a precise partial unwind isn't
+// possible — clearing and re-deriving from the party's current PartyPayment
+// totals is the only way to keep bill balances correct.
+export async function resyncAdvanceForParty(tx: Prisma.TransactionClient, partyId: string) {
+  const advancedSales = await tx.salePayment.findMany({
+    where: { source: "ADVANCE", sale: { partyId } },
+    select: { id: true, saleId: true },
+  });
+  if (advancedSales.length > 0) {
+    await tx.salePayment.deleteMany({
+      where: { id: { in: advancedSales.map((p) => p.id) } },
+    });
+    for (const saleId of new Set(advancedSales.map((p) => p.saleId))) {
+      const total = await tx.salePayment.aggregate({
+        where: { saleId },
+        _sum: { amountCents: true },
+      });
+      await tx.sale.update({
+        where: { id: saleId },
+        data: { paidCents: total._sum.amountCents ?? 0 },
+      });
+    }
+  }
+
+  const advancedPurchases = await tx.purchasePayment.findMany({
+    where: { source: "ADVANCE", purchase: { partyId } },
+    select: { id: true, purchaseId: true },
+  });
+  if (advancedPurchases.length > 0) {
+    await tx.purchasePayment.deleteMany({
+      where: { id: { in: advancedPurchases.map((p) => p.id) } },
+    });
+    for (const purchaseId of new Set(advancedPurchases.map((p) => p.purchaseId))) {
+      const total = await tx.purchasePayment.aggregate({
+        where: { purchaseId },
+        _sum: { amountCents: true },
+      });
+      await tx.purchase.update({
+        where: { id: purchaseId },
+        data: { paidCents: total._sum.amountCents ?? 0 },
+      });
+    }
+  }
+
+  await sweepAdvanceIntoOutstandingSales(tx, partyId);
+  await sweepAdvanceIntoOutstandingPurchases(tx, partyId);
+}
+
 // SalePayments settled against a party's existing advance credit (source:
 // "ADVANCE") rather than fresh cash — see PartyPayment and SalePayment.source.
 // Grouped by party via the parent Sale, since SalePayment has no partyId of

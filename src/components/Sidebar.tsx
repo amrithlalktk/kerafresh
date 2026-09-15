@@ -68,14 +68,24 @@ export default function Sidebar({ session }: { session: SessionPayload }) {
       <div className="border-t border-black/10 px-5 py-4 text-xs">
         <span className="text-black">{session.name}</span>
         <div className="text-black/40">{session.role}</div>
-        <Link
-          href="/about"
-          className={`mt-2 inline-block underline-offset-2 hover:underline ${
-            pathname.startsWith("/about") ? "text-black" : "text-black/40"
-          }`}
-        >
-          About
-        </Link>
+        <div className="mt-2 flex gap-3">
+          <Link
+            href="/account"
+            className={`underline-offset-2 hover:underline ${
+              pathname.startsWith("/account") ? "text-black" : "text-black/40"
+            }`}
+          >
+            Account
+          </Link>
+          <Link
+            href="/about"
+            className={`underline-offset-2 hover:underline ${
+              pathname.startsWith("/about") ? "text-black" : "text-black/40"
+            }`}
+          >
+            About
+          </Link>
+        </div>
       </div>
     </aside>
   );

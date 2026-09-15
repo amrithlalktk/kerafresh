@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { formatBillNumber, formatCents } from "@/lib/money";
 import { formatDate } from "@/lib/date";
 import type { Purchase, Sale } from "@/lib/types";
+import EmailPdfButton from "@/components/EmailPdfButton";
 
 export type PreviewBillType = "SALE" | "PURCHASE";
 
@@ -149,6 +150,12 @@ export default function BillPreviewModal({
             >
               View full details
             </a>
+            <div className="mt-2 flex justify-center">
+              <EmailPdfButton
+                endpoint={`/api/print/${billType === "SALE" ? "sale" : "purchase"}/${bill.id}/email`}
+                className="text-sm underline underline-offset-4"
+              />
+            </div>
           </>
         )}
       </div>

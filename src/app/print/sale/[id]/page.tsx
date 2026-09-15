@@ -7,6 +7,7 @@ import { paymentMethodLabel } from "@/lib/types";
 import { COMPANY } from "@/lib/company";
 import { displayUnit } from "@/lib/units";
 import PrintButton from "@/components/PrintButton";
+import EmailPdfButton from "@/components/EmailPdfButton";
 
 export default async function PrintSalePage({
   params,
@@ -36,7 +37,10 @@ export default async function PrintSalePage({
         <a href="/sale" className="text-sm text-black/60 underline underline-offset-4">
           Back to Sale
         </a>
-        <PrintButton />
+        <div className="flex items-center gap-2">
+          <EmailPdfButton endpoint={`/api/print/sale/${sale.id}/email`} />
+          <PrintButton />
+        </div>
       </div>
 
       <div className="mb-6 flex items-start justify-between border-b border-black/10 pb-4">

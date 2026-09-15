@@ -63,6 +63,10 @@ model User {
   role         Role          @default(STAFF)
   active       Boolean       @default(true)
   createdAt    DateTime      @default(now())
+  // Where this user's one-click "Email PDF" sends bills/reports — separate
+  // from their login `email` so it can point at e.g. an accountant's inbox.
+  // Null until they set it in Account settings.
+  notifyEmail  String?
   transactions        Transaction[]
   sales               Sale[]
   purchases           Purchase[]
@@ -147,6 +151,14 @@ model PartyPayment {
   recordedBy    User                  @relation(fields: [userId], references: [id])
   userId        String
   createdAt     DateTime              @default(now())
+  // Set when this row is the "excess above what was due" portion of a
+  // specific bill payment (see POST .../payments routes), so deleting that
+  // bill payment cascades away the advance credit it created instead of
+  // leaving it behind as phantom credit still applied to some other bill.
+  sourceSalePayment       SalePayment?     @relation(fields: [sourceSalePaymentId], references: [id], onDelete: Cascade)
+  sourceSalePaymentId     String?          @unique
+  sourcePurchasePayment   PurchasePayment? @relation(fields: [sourcePurchasePaymentId], references: [id], onDelete: Cascade)
+  sourcePurchasePaymentId String?          @unique
 
   @@index([date])
 }
@@ -219,6 +231,9 @@ model SalePayment {
   source        PaymentSource @default(CASH)
   notes         String?
   createdAt     DateTime      @default(now())
+  // Reverse side of PartyPayment.sourceSalePayment — the excess-as-advance
+  // credit this specific payment spawned, if any.
+  excessPartyPayment PartyPayment?
 
   @@index([date])
 }
@@ -291,6 +306,9 @@ model PurchasePayment {
   source        PaymentSource @default(CASH)
   notes         String?
   createdAt     DateTime      @default(now())
+  // Reverse side of PartyPayment.sourcePurchasePayment — the excess-as-advance
+  // credit this specific payment spawned, if any.
+  excessPartyPayment PartyPayment?
 
   @@index([date])
 }

@@ -19,6 +19,7 @@ import {
 } from "@/lib/reportHelpers";
 import type { Item, Party, Purchase, Sale } from "@/lib/types";
 import BillPreviewModal, { type PreviewBillType } from "@/components/BillPreviewModal";
+import EmailPdfButton from "@/components/EmailPdfButton";
 
 export default function SalesPurchasesReportPage() {
   const { from: txFrom, to: txTo, setFrom: setTxFrom, setTo: setTxTo, ready } = useDefaultDateRange();
@@ -285,6 +286,20 @@ export default function SalesPurchasesReportPage() {
             >
               Export PDF
             </button>
+            <EmailPdfButton
+              endpoint="/api/reports/email-pdf"
+              body={{
+                filename: taxOnly
+                  ? `tax_${txFrom}_to_${txTo}.pdf`
+                  : `sales_purchases_${txFrom}_to_${txTo}.pdf`,
+                title: taxOnly
+                  ? `Tax report (${txFrom} to ${txTo})`
+                  : `Sales & Purchases report (${txFrom} to ${txTo})`,
+                header: taxOnly ? TX_TAX_HEADER : TX_HEADER,
+                rows: taxOnly ? taxLineCsvRows(taxRows) : txCsvRows(txRows),
+              }}
+              disabled={taxOnly ? taxRows.length === 0 : txRows.length === 0}
+            />
             <button
               onClick={() => window.print()}
               className="rounded-md border border-black/15 px-3 py-2 text-sm dark:border-white/15"

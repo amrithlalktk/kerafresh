@@ -18,16 +18,21 @@ export async function sendMail({
   to,
   subject,
   text,
+  attachments,
 }: {
   to: string;
   subject: string;
   text: string;
+  attachments?: { filename: string; content: Buffer; contentType?: string }[];
 }) {
   const transport = getTransport();
   if (!transport) {
     console.log(
       `\n[mail] SMTP_HOST not set in .env — logging email instead of sending it.\n` +
-        `[mail] To: ${to}\n[mail] Subject: ${subject}\n[mail] Body:\n${text}\n`
+        `[mail] To: ${to}\n[mail] Subject: ${subject}\n[mail] Body:\n${text}\n` +
+        (attachments?.length
+          ? `[mail] Attachments: ${attachments.map((a) => a.filename).join(", ")}\n`
+          : "")
     );
     return;
   }
@@ -37,5 +42,6 @@ export async function sendMail({
     to,
     subject,
     text,
+    attachments,
   });
 }

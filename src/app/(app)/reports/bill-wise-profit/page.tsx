@@ -8,6 +8,7 @@ import SummaryCard from "@/components/SummaryCard";
 import { downloadReportCsv, downloadReportPdf } from "@/lib/reportExport";
 import { useDefaultDateRange } from "@/lib/reportHelpers";
 import type { Item, Sale } from "@/lib/types";
+import EmailPdfButton from "@/components/EmailPdfButton";
 
 type ProfitRow = {
   billNumber: number;
@@ -151,6 +152,16 @@ export default function BillWiseProfitPage() {
             >
               Export PDF
             </button>
+            <EmailPdfButton
+              endpoint="/api/reports/email-pdf"
+              body={{
+                filename: `bill_wise_profit_${from}_to_${to}.pdf`,
+                title: `Bill Wise Profit (${from} to ${to})`,
+                header: HEADER,
+                rows: csvRows(rows),
+              }}
+              disabled={rows.length === 0}
+            />
             <button
               onClick={() => window.print()}
               className="rounded-md border border-black/15 px-3 py-2 text-sm dark:border-white/15"

@@ -6,6 +6,7 @@ import Card from "@/components/Card";
 import { downloadReportCsv, downloadReportPdf } from "@/lib/reportExport";
 import { useDefaultDateRange } from "@/lib/reportHelpers";
 import type { Item, Sale } from "@/lib/types";
+import EmailPdfButton from "@/components/EmailPdfButton";
 
 export default function ProfitLossPage() {
   const { from, to, setFrom, setTo, ready } = useDefaultDateRange();
@@ -55,20 +56,22 @@ export default function ProfitLossPage() {
   const grossProfitCents = revenueCents - cogsCents;
   const netProfitCents = grossProfitCents - expenseCents;
 
-  function handleExport(kind: "csv" | "pdf") {
-    const header = ["Line", "Amount"];
-    const rows = [
+  function reportRows() {
+    return [
       ["Revenue (sales, excl. tax)", (revenueCents / 100).toFixed(2)],
       ["Cost of goods sold", (-cogsCents / 100).toFixed(2)],
       ["Gross profit", (grossProfitCents / 100).toFixed(2)],
       ["Expenses", (-expenseCents / 100).toFixed(2)],
       ["Net profit", (netProfitCents / 100).toFixed(2)],
     ];
+  }
+
+  function handleExport(kind: "csv" | "pdf") {
     const args = {
       filename: `profit_and_loss_${from}_to_${to}.${kind}`,
       title: `Profit & Loss (${from} to ${to})`,
-      header,
-      rows,
+      header: ["Line", "Amount"],
+      rows: reportRows(),
       generatedBy,
     };
     if (kind === "csv") downloadReportCsv(args);
@@ -120,6 +123,16 @@ export default function ProfitLossPage() {
             >
               Export PDF
             </button>
+            <EmailPdfButton
+              endpoint="/api/reports/email-pdf"
+              body={{
+                filename: `profit_and_loss_${from}_to_${to}.pdf`,
+                title: `Profit & Loss (${from} to ${to})`,
+                header: ["Line", "Amount"],
+                rows: reportRows(),
+              }}
+              disabled={loading}
+            />
             <button
               onClick={() => window.print()}
               className="rounded-md border border-black/15 px-3 py-2 text-sm dark:border-white/15"

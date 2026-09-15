@@ -11,6 +11,7 @@ import type { Party, PartyPayment, Purchase, Sale } from "@/lib/types";
 import Card from "@/components/Card";
 import RecordPaymentForm from "@/components/RecordPaymentForm";
 import BillPreviewModal, { type PreviewBillType } from "@/components/BillPreviewModal";
+import EmailPdfButton from "@/components/EmailPdfButton";
 
 const STATEMENT_HEADER = ["Date", "Type", "Reference", "Debit", "Credit", "Balance"];
 
@@ -150,6 +151,15 @@ export default function PartyStatementPage() {
           >
             Export PDF
           </button>
+          <EmailPdfButton
+            endpoint="/api/reports/email-pdf"
+            body={{
+              filename: `${party.name.replace(/\s+/g, "_")}_statement.pdf`,
+              title: `Statement — ${party.name}`,
+              header: STATEMENT_HEADER,
+              rows: statementRows(),
+            }}
+          />
         </div>
       </div>
 

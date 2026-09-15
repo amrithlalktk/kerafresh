@@ -4,10 +4,7 @@ import { getSession } from "@/lib/auth";
 import { isAdminRole } from "@/lib/types";
 import { partyPaymentSchema } from "@/lib/validation";
 import { toCents } from "@/lib/money";
-import {
-  sweepAdvanceIntoOutstandingPurchases,
-  sweepAdvanceIntoOutstandingSales,
-} from "@/lib/balances";
+import { resyncAdvanceForParty } from "@/lib/balances";
 
 export async function PATCH(
   request: Request,
@@ -41,13 +38,11 @@ export async function PATCH(
         },
       });
 
-      // Re-run in case the edit freed up more credit (or changed direction),
-      // so it immediately reduces the party's other outstanding bills.
-      if (direction === "RECEIVED") {
-        await sweepAdvanceIntoOutstandingSales(tx, updated.partyId);
-      } else {
-        await sweepAdvanceIntoOutstandingPurchases(tx, updated.partyId);
-      }
+      // Clear any advance this payment previously funded and reapply from
+      // scratch against the payment's new amount/direction — handles both
+      // growing (frees more credit forward) and shrinking (a stale ADVANCE
+      // row from before the edit would otherwise overstate what's paid).
+      await resyncAdvanceForParty(tx, updated.partyId);
 
       return updated;
     });
@@ -73,6 +68,9 @@ export async function DELETE(
   }
 
   const { paymentId } = await params;
-  await db.partyPayment.delete({ where: { id: paymentId } });
+  await db.$transaction(async (tx) => {
+    const deleted = await tx.partyPayment.delete({ where: { id: paymentId } });
+    await resyncAdvanceForParty(tx, deleted.partyId);
+  });
   return NextResponse.json({ ok: true });
 }
