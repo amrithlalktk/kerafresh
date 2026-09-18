@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Search, Plus, ChevronDown, LogOut } from "lucide-react";
+import { Plus, ChevronDown, LogOut } from "lucide-react";
 
 export default function TopBar() {
   const router = useRouter();
@@ -15,12 +15,7 @@ export default function TopBar() {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-white/40 bg-white/50 px-6 py-3 backdrop-blur-xl print:hidden dark:border-white/5 dark:bg-[#161927]/60">
-      <div className="flex max-w-xs flex-1 items-center gap-2 rounded-lg border border-black/10 px-3 py-2 text-sm text-black/40 dark:border-white/10 dark:text-white/40">
-        <Search size={16} />
-        <span>Search</span>
-      </div>
-
+    <header className="sticky top-0 z-30 flex items-center justify-end border-b border-white/40 bg-white/50 px-6 py-3 backdrop-blur-xl print:hidden dark:border-white/5 dark:bg-[#161927]/60">
       <div className="flex items-center gap-2">
         <button
           onClick={() => router.push("/sale?new=1")}
