@@ -39,7 +39,7 @@ export default function AppShell({
         <div className="pointer-events-none absolute right-0 top-1/3 -z-10 h-96 w-96 rounded-full bg-[#2a78d6]/20 blur-3xl print:hidden" />
         <div className="pointer-events-none absolute bottom-0 left-1/3 -z-10 h-72 w-72 rounded-full bg-[#0ca30c]/10 blur-3xl print:hidden" />
         <Watermark />
-        <TopBar onMenuClick={() => setMobileNavOpen(true)} />
+        <TopBar menuOpen={mobileNavOpen} onMenuClick={() => setMobileNavOpen(true)} />
         <main className="mx-auto w-full flex-1 px-4 py-4 print:overflow-visible print:px-0 sm:px-6 sm:py-6">
           {children}
         </main>

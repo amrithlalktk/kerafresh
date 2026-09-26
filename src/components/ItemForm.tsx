@@ -70,7 +70,7 @@ export default function ItemForm({
         onChange={(e) => setUnit(e.target.value)}
         className={inputClass}
       />
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label className="text-xs text-black/60 dark:text-white/60">Opening stock</label>
           <input

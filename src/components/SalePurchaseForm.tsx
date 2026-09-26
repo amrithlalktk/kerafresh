@@ -225,7 +225,9 @@ export default function SalePurchaseForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-      <div className={`grid items-end gap-2 ${mode === "SALE" ? "grid-cols-3" : "grid-cols-2"}`}>
+      <div
+        className={`grid grid-cols-1 items-end gap-2 ${mode === "SALE" ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}
+      >
         {mode === "SALE" && (
           <div className="flex flex-col gap-1">
             <label className="text-xs text-black/60 dark:text-white/60">Bill number</label>
@@ -485,7 +487,7 @@ export default function SalePurchaseForm({
           add or remove installments.
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <div className="flex flex-col gap-1">
             <label className="text-xs text-black/60 dark:text-white/60">Paid now</label>
             <input

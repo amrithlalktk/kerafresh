@@ -76,7 +76,7 @@ export default function PartyForm({
         <option value="CUSTOMER">Customer</option>
         <option value="SUPPLIER">Supplier</option>
       </select>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <input
           placeholder="Phone (optional)"
           value={phone ?? ""}

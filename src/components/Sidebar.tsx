@@ -60,6 +60,24 @@ export default function Sidebar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
+  // Escape closes the drawer, and the page behind it shouldn't scroll while
+  // it's open — only wired up while it's actually open (mobile only; on
+  // desktop mobileOpen never becomes true since there's no hamburger to
+  // trigger it).
+  useEffect(() => {
+    if (!mobileOpen) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileOpen, onClose]);
+
   return (
     <>
       {mobileOpen && (
