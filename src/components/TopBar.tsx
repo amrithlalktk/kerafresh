@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Plus, ChevronDown, LogOut } from "lucide-react";
+import { Plus, ChevronDown, LogOut, Menu } from "lucide-react";
 
-export default function TopBar() {
+export default function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -15,27 +15,37 @@ export default function TopBar() {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-end border-b border-white/40 bg-white/50 px-6 py-3 backdrop-blur-xl print:hidden dark:border-white/5 dark:bg-[#161927]/60">
-      <div className="flex items-center gap-2">
+    <header className="sticky top-0 z-10 flex items-center justify-end border-b border-white/40 bg-white/50 px-4 py-3 backdrop-blur-xl print:hidden sm:px-6 dark:border-white/5 dark:bg-[#161927]/60">
+      <button
+        type="button"
+        onClick={onMenuClick}
+        aria-label="Open menu"
+        className="mr-auto text-black/60 md:hidden dark:text-white/60"
+      >
+        <Menu size={22} />
+      </button>
+
+      <div className="flex items-center gap-1.5 sm:gap-2">
         <button
           onClick={() => router.push("/sale?new=1")}
-          className="flex items-center gap-1.5 rounded-full bg-[#1baf7a] px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          className="flex items-center gap-1.5 rounded-full bg-[#1baf7a] px-3 py-2 text-sm font-medium text-white hover:opacity-90 sm:px-4"
         >
-          <Plus size={16} /> Add Sale
+          <Plus size={16} /> <span className="hidden sm:inline">Add Sale</span>
         </button>
         <button
           onClick={() => router.push("/purchase?new=1")}
-          className="flex items-center gap-1.5 rounded-full bg-[#2a78d6] px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          className="flex items-center gap-1.5 rounded-full bg-[#2a78d6] px-3 py-2 text-sm font-medium text-white hover:opacity-90 sm:px-4"
         >
-          <Plus size={16} /> Add Purchase
+          <Plus size={16} /> <span className="hidden sm:inline">Add Purchase</span>
         </button>
         <div className="relative">
           <button
             onClick={() => setMoreOpen((v) => !v)}
             onBlur={() => setTimeout(() => setMoreOpen(false), 150)}
-            className="flex items-center gap-1.5 rounded-full border border-[#2a78d6] px-4 py-2 text-sm font-medium text-[#2a78d6] hover:bg-[#2a78d6]/5"
+            className="flex items-center gap-1.5 rounded-full border border-[#2a78d6] px-3 py-2 text-sm font-medium text-[#2a78d6] hover:bg-[#2a78d6]/5 sm:px-4"
           >
-            <Plus size={16} /> Add More <ChevronDown size={14} />
+            <Plus size={16} /> <span className="hidden sm:inline">Add More</span>{" "}
+            <ChevronDown size={14} />
           </button>
           {moreOpen && (
             <div className="absolute right-0 z-10 mt-1 w-40 rounded-lg border border-white/50 bg-white/80 py-1 text-sm shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-[#1e2231]/80">
@@ -57,7 +67,7 @@ export default function TopBar() {
         </div>
         <button
           onClick={handleLogout}
-          className="ml-2 flex items-center gap-1.5 rounded-lg border border-black/10 px-3 py-2 text-sm dark:border-white/10"
+          className="ml-1 flex items-center gap-1.5 rounded-lg border border-black/10 px-3 py-2 text-sm sm:ml-2 dark:border-white/10"
           title="Log out"
         >
           <LogOut size={16} />

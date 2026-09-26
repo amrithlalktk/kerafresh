@@ -15,7 +15,13 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/icon.") ||
-    pathname.startsWith("/apple-icon.")
+    pathname.startsWith("/apple-icon.") ||
+    // PWA installability assets — a browser can probe these (e.g. deciding
+    // whether to offer "Add to Home Screen") before the user has ever
+    // logged in, so they can't require a session.
+    pathname === "/manifest.webmanifest" ||
+    pathname.startsWith("/icons/") ||
+    pathname === "/apple-touch-icon.png"
   ) {
     return NextResponse.next();
   }
