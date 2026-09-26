@@ -173,13 +173,6 @@ export default function RecordPaymentForm({
     fetchBills(q);
   }
 
-  useEffect(() => {
-    if (lockPartyId && (payType === "SALE" || payType === "PURCHASE")) {
-      fetchBills("");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [payType, lockPartyId]);
-
   function selectBill(bill: Sale | Purchase) {
     setSelectedBill(bill);
     setBillQuery(billLabel(bill));
