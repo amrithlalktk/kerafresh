@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { formatCents } from "@/lib/money";
 import { formatDate } from "@/lib/date";
-import { paymentMethodLabel, type PaymentLine, type PaymentMethod } from "@/lib/types";
+import { PAYMENT_METHODS, paymentMethodLabel, type PaymentLine, type PaymentMethod } from "@/lib/types";
 
 const inputClass =
   "rounded-md border border-black/15 px-2 py-1.5 text-sm dark:border-white/15 dark:bg-transparent";
@@ -164,8 +164,11 @@ export default function PaymentHistory({
             onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
             className={inputClass}
           >
-            <option value="CASH">Cash</option>
-            <option value="BANK">Bank</option>
+            {PAYMENT_METHODS.map((m) => (
+              <option key={m} value={m}>
+                {paymentMethodLabel(m)}
+              </option>
+            ))}
           </select>
         </div>
         <button

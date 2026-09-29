@@ -4,7 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import Card from "@/components/Card";
 import { formatCents } from "@/lib/money";
-import { isAdminRole, type Category, type Item, type Party, type Role } from "@/lib/types";
+import {
+  isAdminRole,
+  parsePaymentMethod,
+  paymentMethodLabel,
+  type Category,
+  type Item,
+  type Party,
+  type PaymentMethod,
+  type Role,
+} from "@/lib/types";
 
 type EntityType = "SALE" | "PURCHASE" | "EXPENSE";
 
@@ -17,7 +26,7 @@ type SaleRow = {
   price: number;
   taxPercent: number;
   paid: number;
-  paymentMethod: "CASH" | "BANK";
+  paymentMethod: PaymentMethod;
   notes: string;
   error?: string;
 };
@@ -28,7 +37,7 @@ type ExpenseRow = {
   description: string;
   categoryName: string;
   amount: number;
-  paymentMethod: "CASH" | "BANK";
+  paymentMethod: PaymentMethod;
   notes: string;
   error?: string;
 };
@@ -149,8 +158,8 @@ export default function ImportPage() {
         const categoryName = field(r, "category");
         const amountStr = field(r, "amount");
         const amount = parseNumber(amountStr);
-        const methodRaw = field(r, "payment method", "method").toUpperCase();
-        const paymentMethod: "CASH" | "BANK" = methodRaw === "BANK" ? "BANK" : "CASH";
+        const methodRaw = field(r, "payment method", "method");
+        const paymentMethod = parsePaymentMethod(methodRaw);
         const notes = field(r, "notes");
 
         let error: string | undefined;
@@ -180,8 +189,8 @@ export default function ImportPage() {
         const price = parseNumber(field(r, "price"));
         const taxPercent = parseNumber(field(r, "tax %", "tax", "tax percent")) ?? 0;
         const paid = parseNumber(field(r, "paid")) ?? 0;
-        const methodRaw = field(r, "payment method", "method").toUpperCase();
-        const paymentMethod: "CASH" | "BANK" = methodRaw === "BANK" ? "BANK" : "CASH";
+        const methodRaw = field(r, "payment method", "method");
+        const paymentMethod = parsePaymentMethod(methodRaw);
         const notes = field(r, "notes");
 
         let error: string | undefined;
@@ -430,7 +439,7 @@ export default function ImportPage() {
                           <td className="px-4 py-3 text-right whitespace-nowrap">
                             {formatCents(Math.round(r.amount * 100))}
                           </td>
-                          <td className="px-4 py-3">{r.paymentMethod}</td>
+                          <td className="px-4 py-3">{paymentMethodLabel(r.paymentMethod)}</td>
                           <td className="px-4 py-3">
                             {r.error ? (
                               <span className="text-[#d03b3b]">{r.error}</span>

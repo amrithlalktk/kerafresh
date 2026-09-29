@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
+import type { PaymentMethod } from "@/lib/types";
 
 // Party/item balances are always computed at read time from Sale/Purchase
 // rows rather than stored, so they can never drift out of sync.
@@ -14,6 +15,13 @@ import type { Prisma } from "@prisma/client";
 export async function sweepAdvanceIntoOutstandingSales(
   tx: Prisma.TransactionClient,
   partyId: string,
+  // The payment method of the advance that triggered this sweep — recorded
+  // on each ADVANCE SalePayment created here so it doesn't silently fall
+  // back to the schema's CASH default and mislabel non-Cash advances on the
+  // dashboard/reports. Defaults to CASH for resyncAdvanceForParty, where the
+  // pool can be funded by several PartyPayments of different methods and
+  // isn't attributed per-source-payment (see that function's comment).
+  paymentMethod: PaymentMethod = "CASH",
   // Shown on each ADVANCE SalePayment this creates — callers that just
   // caused a specific overpayment pass something more useful than the
   // generic default (see POST .../sales/[id]/payments), so a bill that gets
@@ -60,6 +68,7 @@ export async function sweepAdvanceIntoOutstandingSales(
         saleId: sale.id,
         date: new Date(),
         amountCents: applyCents,
+        paymentMethod,
         source: "ADVANCE",
         notes: reasonNote,
       },
@@ -76,6 +85,8 @@ export async function sweepAdvanceIntoOutstandingSales(
 export async function sweepAdvanceIntoOutstandingPurchases(
   tx: Prisma.TransactionClient,
   partyId: string,
+  // See the matching parameter on sweepAdvanceIntoOutstandingSales above.
+  paymentMethod: PaymentMethod = "CASH",
   reasonNote = "Settled from advance credit"
 ) {
   const [paidTotal, receivedTotal, advanceSourcedTotal] = await Promise.all([
@@ -115,6 +126,7 @@ export async function sweepAdvanceIntoOutstandingPurchases(
         purchaseId: purchase.id,
         date: new Date(),
         amountCents: applyCents,
+        paymentMethod,
         source: "ADVANCE",
         notes: reasonNote,
       },

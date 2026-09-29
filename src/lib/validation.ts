@@ -25,7 +25,8 @@ export const categorySchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
 });
 
-const paymentMethodSchema = z.enum(["CASH", "BANK"]).optional().nullable();
+const PAYMENT_METHOD_VALUES = ["CASH", "BANK", "IDBI_BANK", "INDUSIND_BANK", "GPAY"] as const;
+const paymentMethodSchema = z.enum(PAYMENT_METHOD_VALUES).optional().nullable();
 
 export const expenseSchema = z.object({
   date: z.string().min(1, "Date is required"),
@@ -92,7 +93,7 @@ const billSchemaBase = z.object({
   // How much of `paid` is settled from the party's existing advance credit
   // (PartyPayment) instead of fresh cash — see POST /api/sales.
   advanceAppliedCents: z.number().int().nonnegative().default(0),
-  paymentMethod: z.enum(["CASH", "BANK"]).default("CASH"),
+  paymentMethod: z.enum(PAYMENT_METHOD_VALUES).default("CASH"),
   notes: z.string().trim().optional().nullable(),
 });
 
@@ -108,7 +109,7 @@ export const purchaseSchema = billSchemaBase;
 export const paymentSchema = z.object({
   date: z.string().min(1, "Date is required"),
   amount: z.number().positive("Amount must be greater than 0"),
-  paymentMethod: z.enum(["CASH", "BANK"]).default("CASH"),
+  paymentMethod: z.enum(PAYMENT_METHOD_VALUES).default("CASH"),
   notes: z.string().trim().optional().nullable(),
 });
 
@@ -117,7 +118,7 @@ export const partyPaymentSchema = z.object({
   date: z.string().min(1, "Date is required"),
   direction: z.enum(["RECEIVED", "PAID"]),
   amount: z.number().positive("Amount must be greater than 0"),
-  paymentMethod: z.enum(["CASH", "BANK"]).default("CASH"),
+  paymentMethod: z.enum(PAYMENT_METHOD_VALUES).default("CASH"),
   notes: z.string().trim().optional().nullable(),
 });
 

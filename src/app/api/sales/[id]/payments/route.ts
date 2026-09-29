@@ -106,6 +106,7 @@ export async function POST(
         await sweepAdvanceIntoOutstandingSales(
           tx,
           existing.partyId,
+          paymentMethod,
           excessCents > 0
             ? `${formatCents(amountCents)} paid on Sale #${formatBillNumber(existing.billNumber)} — ${formatCents(billPortionCents)} to that bill, ${formatCents(excessCents)} as advance here`
             : undefined

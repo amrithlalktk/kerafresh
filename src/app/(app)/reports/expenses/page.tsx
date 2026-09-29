@@ -9,7 +9,7 @@ import SearchInput from "@/components/SearchInput";
 import CategoryBreakdownChart from "@/components/CategoryBreakdownChart";
 import { downloadReportCsv, downloadReportPdf } from "@/lib/reportExport";
 import { EXPENSE_HEADER, expenseRows, useDefaultDateRange } from "@/lib/reportHelpers";
-import { paymentMethodLabel, type Category, type Expense, type PaymentMethod } from "@/lib/types";
+import { PAYMENT_METHODS, paymentMethodLabel, type Category, type Expense, type PaymentMethod } from "@/lib/types";
 import EmailPdfButton from "@/components/EmailPdfButton";
 
 type ReportData = {
@@ -129,8 +129,11 @@ export default function ExpenseReportPage() {
               className="bg-transparent py-1 text-sm focus:outline-none"
             >
               <option value="">All</option>
-              <option value="CASH">Cash</option>
-              <option value="BANK">Bank</option>
+              {PAYMENT_METHODS.map((m) => (
+                <option key={m} value={m}>
+                  {paymentMethodLabel(m)}
+                </option>
+              ))}
             </select>
           </div>
           <div className="flex flex-col gap-1">

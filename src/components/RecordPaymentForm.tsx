@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { formatBillNumber, formatCents } from "@/lib/money";
+import { PAYMENT_METHODS, paymentMethodLabel } from "@/lib/types";
 import type {
   CombinedPayment,
   Party,
@@ -388,8 +389,11 @@ export default function RecordPaymentForm({
             onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
             className={inputClass}
           >
-            <option value="CASH">Cash</option>
-            <option value="BANK">Bank</option>
+            {PAYMENT_METHODS.map((m) => (
+              <option key={m} value={m}>
+                {paymentMethodLabel(m)}
+              </option>
+            ))}
           </select>
         </div>
         <div className="flex flex-1 flex-col gap-1">

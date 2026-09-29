@@ -59,9 +59,9 @@ export async function POST(
       // Immediately apply this (plus anything already unapplied) against the
       // party's existing outstanding bills, not just a bill created later.
       if (direction === "RECEIVED") {
-        await sweepAdvanceIntoOutstandingSales(tx, id);
+        await sweepAdvanceIntoOutstandingSales(tx, id, paymentMethod);
       } else {
-        await sweepAdvanceIntoOutstandingPurchases(tx, id);
+        await sweepAdvanceIntoOutstandingPurchases(tx, id, paymentMethod);
       }
 
       return created;

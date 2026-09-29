@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { PAYMENT_METHODS, type PaymentMethod } from "@/lib/types";
 import type { Prisma } from "@prisma/client";
 
 export async function GET(request: Request) {
@@ -25,8 +26,8 @@ export async function GET(request: Request) {
     }
   }
   if (categoryId) where.categoryId = categoryId;
-  if (paymentMethod === "CASH" || paymentMethod === "BANK")
-    where.paymentMethod = paymentMethod;
+  if (PAYMENT_METHODS.includes(paymentMethod as PaymentMethod))
+    where.paymentMethod = paymentMethod as PaymentMethod;
   if (q) where.description = { contains: q, mode: "insensitive" };
 
   const expenses = await db.transaction.findMany({

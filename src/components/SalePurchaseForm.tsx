@@ -3,7 +3,17 @@
 import { useEffect, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { formatCents } from "@/lib/money";
-import { FFA_GRADES, type ChargeType, type Item, type Party, type PaymentMethod, type Purchase, type Sale } from "@/lib/types";
+import {
+  FFA_GRADES,
+  PAYMENT_METHODS,
+  paymentMethodLabel,
+  type ChargeType,
+  type Item,
+  type Party,
+  type PaymentMethod,
+  type Purchase,
+  type Sale,
+} from "@/lib/types";
 
 const inputClass =
   "rounded-md border border-black/15 px-3 py-2 text-sm dark:border-white/15 dark:bg-transparent";
@@ -507,8 +517,11 @@ export default function SalePurchaseForm({
               onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
               className={inputClass}
             >
-              <option value="CASH">Cash</option>
-              <option value="BANK">Bank</option>
+              {PAYMENT_METHODS.map((m) => (
+                <option key={m} value={m}>
+                  {paymentMethodLabel(m)}
+                </option>
+              ))}
             </select>
           </div>
         </div>

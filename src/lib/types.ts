@@ -1,6 +1,6 @@
 export type TransactionType = "INCOME" | "EXPENSE";
 export type PartyType = "CUSTOMER" | "SUPPLIER" | "BOTH";
-export type PaymentMethod = "CASH" | "BANK";
+export type PaymentMethod = "CASH" | "BANK" | "IDBI_BANK" | "INDUSIND_BANK" | "GPAY";
 export type Role = "SUPER_ADMIN" | "ADMIN" | "STAFF";
 
 // Super Admin has every Admin permission everywhere in the app — the only
@@ -14,10 +14,36 @@ export function isAdminRole(role: Role) {
 const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   CASH: "Cash",
   BANK: "Bank",
+  IDBI_BANK: "IDBI Bank",
+  INDUSIND_BANK: "IndusInd Bank",
+  GPAY: "GPay",
 };
 
 export function paymentMethodLabel(method: PaymentMethod) {
   return PAYMENT_METHOD_LABELS[method];
+}
+
+// Single source of truth for every payment-method <select> in the app —
+// map over this instead of hardcoding <option> lists (there were 6+ copies
+// of the same Cash/Bank pair before this).
+export const PAYMENT_METHODS: PaymentMethod[] = [
+  "CASH",
+  "BANK",
+  "IDBI_BANK",
+  "INDUSIND_BANK",
+  "GPAY",
+];
+
+// Best-effort match for free text from an imported spreadsheet column (e.g.
+// "IDBI Bank", "gpay", "Bank") onto a real PaymentMethod — falls back to
+// CASH for anything unrecognized, same as the previous hardcoded behavior.
+export function parsePaymentMethod(raw: string | null | undefined): PaymentMethod {
+  const normalized = (raw ?? "").trim().toUpperCase().replace(/[\s-]+/g, "_");
+  return (
+    PAYMENT_METHODS.find(
+      (m) => m === normalized || PAYMENT_METHOD_LABELS[m].toUpperCase().replace(/[\s-]+/g, "_") === normalized
+    ) ?? "CASH"
+  );
 }
 
 // Free Fatty Acid quality grade, offered on a Sale/Purchase line when the

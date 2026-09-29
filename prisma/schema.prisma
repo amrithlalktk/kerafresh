@@ -41,6 +41,9 @@ enum PartyType {
 enum PaymentMethod {
   CASH
   BANK
+  IDBI_BANK
+  INDUSIND_BANK
+  GPAY
 }
 
 enum PartyPaymentDirection {

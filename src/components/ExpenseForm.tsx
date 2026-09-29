@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Category, Expense, PaymentMethod } from "@/lib/types";
+import { PAYMENT_METHODS, paymentMethodLabel, type Category, type Expense, type PaymentMethod } from "@/lib/types";
 
 const inputClass =
   "rounded-md border border-black/15 px-3 py-2 text-sm dark:border-white/15 dark:bg-transparent";
@@ -114,8 +114,11 @@ export default function ExpenseForm({
         onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
         className={inputClass}
       >
-        <option value="CASH">Cash</option>
-        <option value="BANK">Bank</option>
+        {PAYMENT_METHODS.map((m) => (
+          <option key={m} value={m}>
+            {paymentMethodLabel(m)}
+          </option>
+        ))}
       </select>
       <textarea
         placeholder="Notes (optional)"

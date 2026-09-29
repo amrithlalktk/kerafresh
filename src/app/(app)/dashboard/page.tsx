@@ -133,13 +133,13 @@ export default async function DashboardPage() {
     getItemStockMap(),
     getItemAverageCostMap(),
     db.salePayment.aggregate({ where: { paymentMethod: "CASH" }, _sum: { amountCents: true } }),
-    db.salePayment.aggregate({ where: { paymentMethod: "BANK" }, _sum: { amountCents: true } }),
+    db.salePayment.aggregate({ where: { paymentMethod: { not: "CASH" } }, _sum: { amountCents: true } }),
     db.purchasePayment.aggregate({
       where: { paymentMethod: "CASH" },
       _sum: { amountCents: true },
     }),
     db.purchasePayment.aggregate({
-      where: { paymentMethod: "BANK" },
+      where: { paymentMethod: { not: "CASH" } },
       _sum: { amountCents: true },
     }),
     db.transaction.aggregate({
@@ -147,7 +147,7 @@ export default async function DashboardPage() {
       _sum: { amountCents: true },
     }),
     db.transaction.aggregate({
-      where: { type: "EXPENSE", paymentMethod: "BANK" },
+      where: { type: "EXPENSE", paymentMethod: { not: "CASH" } },
       _sum: { amountCents: true },
     }),
   ]);

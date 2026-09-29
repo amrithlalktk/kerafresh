@@ -5,6 +5,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { formatCents } from "@/lib/money";
 import { formatDate } from "@/lib/date";
 import {
+  PAYMENT_METHODS,
   paymentMethodLabel,
   type PartyPayment,
   type PartyPaymentDirection,
@@ -241,8 +242,11 @@ export default function PartyAdvancePayments({
             onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
             className={inputClass}
           >
-            <option value="CASH">Cash</option>
-            <option value="BANK">Bank</option>
+            {PAYMENT_METHODS.map((m) => (
+              <option key={m} value={m}>
+                {paymentMethodLabel(m)}
+              </option>
+            ))}
           </select>
         </div>
         <div className="flex flex-col gap-1">
