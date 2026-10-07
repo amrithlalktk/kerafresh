@@ -9,6 +9,11 @@ on:
   # workflow without cutting a real release.
   workflow_dispatch: {}
 
+# softprops/action-gh-release needs write access to create the release —
+# many repos default GITHUB_TOKEN to read-only otherwise.
+permissions:
+  contents: write
+
 jobs:
   build-windows:
     runs-on: windows-latest
