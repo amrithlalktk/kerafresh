@@ -11,6 +11,7 @@ import {
   UserCog,
   Printer,
   MousePointerClick,
+  Monitor,
 } from "lucide-react";
 import Card from "@/components/Card";
 import Logo from "@/components/Logo";
@@ -103,6 +104,30 @@ export default function AboutPage() {
           credit, payments, expenses, stock, and reports, all in one place, built to match how
           the business actually works rather than a generic template.
         </p>
+      </Card>
+
+      <Card>
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex gap-3">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1baf7a]/10 text-[#1baf7a]">
+              <Monitor size={16} strokeWidth={2} />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Desktop app for Windows</p>
+              <p className="mt-0.5 text-sm text-black/60 dark:text-white/60">
+                Install Kerafresh as its own app — a real window and taskbar icon, no browser
+                tab. Still needs an internet connection; it uses the same account and data as
+                here.
+              </p>
+            </div>
+          </div>
+          <a
+            href="https://github.com/amrithlalktk/kerafresh/releases/latest/download/Kerafresh-Setup.exe"
+            className="shrink-0 rounded-lg bg-[#1baf7a] px-4 py-2 text-sm font-medium text-white hover:bg-[#1baf7a]/90"
+          >
+            Download for Windows
+          </a>
+        </div>
       </Card>
 
       <Card title="Features">

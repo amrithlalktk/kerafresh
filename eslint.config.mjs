@@ -26,6 +26,9 @@ const eslintConfig = defineConfig([
     // intentional here.
     "prisma/seed.cjs",
     "prisma/backfill-payments.cjs",
+    // Standalone Electron shell with its own package.json/node_modules —
+    // not part of the Next.js app, linted (if at all) on its own.
+    "desktop/**",
   ]),
 ]);
 

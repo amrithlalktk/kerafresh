@@ -46,3 +46,7 @@ next-env.d.ts
 
 # local-only port/env overrides for docker compose (never committed)
 docker-compose.override.yml
+
+# desktop shell (built in CI, see .github/workflows/build-desktop.yml)
+/desktop/node_modules
+/desktop/dist
