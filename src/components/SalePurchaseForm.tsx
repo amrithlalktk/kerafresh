@@ -61,9 +61,6 @@ export default function SalePurchaseForm({
   onCancelEdit: () => void;
 }) {
   const apiBase = mode === "SALE" ? "/api/sales" : "/api/purchases";
-  const relevantParties = parties.filter(
-    (p) => p.type === "BOTH" || p.type === (mode === "SALE" ? "CUSTOMER" : "SUPPLIER")
-  );
 
   const [date, setDate] = useState(initial ? initial.date.slice(0, 10) : todayStr());
   // Sales are numbered by hand (matches a physical bill book) — Purchases
@@ -265,7 +262,7 @@ export default function SalePurchaseForm({
           className={inputClass}
         >
           <option value="">{mode === "SALE" ? "Cash sale (no party)" : "No party"}</option>
-          {relevantParties.map((p) => (
+          {parties.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
             </option>
