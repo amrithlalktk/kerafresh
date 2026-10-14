@@ -268,7 +268,7 @@ export default function NotesPage() {
           <button
             type="button"
             onClick={handleAddSheet}
-            className="flex items-center gap-1.5 rounded-md bg-black px-3 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
+            className="flex items-center gap-1.5 rounded-md bg-brand px-3 py-2 text-sm font-medium text-white"
           >
             <Plus size={14} /> New sheet
           </button>
@@ -298,7 +298,7 @@ export default function NotesPage() {
                     title="Double-click to rename"
                     className={`rounded-md px-3 py-1.5 text-sm ${
                       s.id === activeId
-                        ? "bg-black text-white dark:bg-white dark:text-black"
+                        ? "bg-brand text-white"
                         : "border border-black/15 text-black/70 hover:text-black dark:border-white/15 dark:text-white/70 dark:hover:text-white"
                     }`}
                   >

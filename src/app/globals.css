@@ -1,10 +1,8 @@
 @import "tailwindcss";
 
-/* Force light theme everywhere: redefine Tailwind's `dark:` variant to key
-   off a `.dark` class that is never applied, instead of the default
-   `prefers-color-scheme` media query. Every component's `dark:` utilities
-   stay in the markup (harmless — just never match), so this is a one-place
-   toggle if a manual/system dark mode is wanted again later. */
+/* Day / night theme: `dark:` utilities key off a `.dark` class on <html>,
+   set by the theme toggle (see ThemeToggle + the early script in the root
+   layout) rather than the OS media query, so the user's choice wins. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
@@ -20,6 +18,26 @@
      popup on a dark-mode OS even though the page itself is light. */
   color-scheme: light;
 }
+
+/* Night theme. Most components carry their own `dark:` colours; for the
+   rest, "black" (used for text, borders and faint fills at various
+   opacities) becomes a soft light tone, so the whole UI inverts
+   consistently. Brand green is lifted a little to stay readable on dark. */
+:root.dark {
+  --background: #0f111a;
+  --foreground: #e7e8ef;
+  --canvas: #141724;
+  --brand: #22c48a;
+  --color-black: #eef0f7;
+  color-scheme: dark;
+}
+/* Dark-on-light accent text used for status chips/labels — lighter shades
+   for contrast on the dark background. */
+:root.dark .text-\[\#9a6200\] { color: #f5b84a; }
+:root.dark .text-\[\#0a7d0a\],
+:root.dark .text-\[\#0ca30c\] { color: #4cd964; }
+:root.dark .text-\[\#d03b3b\] { color: #ff7b7b; }
+:root.dark .text-\[\#b87400\] { color: #f5b84a; }
 
 @theme inline {
   --color-background: var(--background);
@@ -45,5 +63,13 @@ body {
 @media print {
   body {
     background: #fff;
+  }
+  /* Paper is always light, whatever the screen theme. */
+  :root.dark {
+    --background: #fff;
+    --foreground: #171717;
+    --brand: #1baf7a;
+    --color-black: #000;
+    color-scheme: light;
   }
 }

@@ -258,7 +258,7 @@ export default function PartyAdvancePayments({
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-md bg-black px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
+          className="rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
         >
           {submitting ? "Saving…" : editingId ? "Save changes" : "Add"}
         </button>

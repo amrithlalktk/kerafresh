@@ -68,7 +68,7 @@ function ResetPasswordForm() {
         </p>
         <button
           onClick={() => router.push("/login")}
-          className="rounded-md bg-black px-3 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
+          className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white"
         >
           Go to sign in
         </button>
@@ -115,7 +115,7 @@ function ResetPasswordForm() {
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-md bg-black px-3 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
+          className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {submitting ? "Please wait…" : "Reset password"}
         </button>

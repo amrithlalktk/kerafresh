@@ -83,7 +83,7 @@ export default function PartiesPage() {
           <SearchInput value={search} onChange={setSearch} placeholder="Search parties…" />
           <button
             onClick={openAdd}
-            className="shrink-0 rounded-full bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
+            className="shrink-0 rounded-full bg-brand px-4 py-2 text-sm font-medium text-white"
           >
             + Add party
           </button>

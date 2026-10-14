@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Plus, ChevronDown, LogOut, Menu } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function TopBar({
   menuOpen,
@@ -87,9 +88,10 @@ export default function TopBar({
             </div>
           )}
         </div>
+        <ThemeToggle className="ml-1 sm:ml-2" />
         <button
           onClick={handleLogout}
-          className="ml-1 flex items-center gap-1.5 rounded-lg border border-black/10 px-3 py-2 text-sm sm:ml-2 dark:border-white/10"
+          className="flex items-center gap-1.5 rounded-lg border border-black/10 px-3 py-2 text-sm dark:border-white/10"
           title="Log out"
         >
           <LogOut size={16} />

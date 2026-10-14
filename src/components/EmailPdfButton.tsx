@@ -239,7 +239,7 @@ export default function EmailPdfButton({
               type="button"
               onClick={handleSend}
               disabled={selected.size === 0 || state === "sending"}
-              className="mt-2 w-full rounded-md bg-black px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40 dark:bg-white dark:text-black"
+              className="mt-2 w-full rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40"
             >
               {state === "sending" ? "Sending…" : `Send to ${selected.size || ""}`.trim()}
             </button>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import Logo from "@/components/Logo";
 import Watermark from "@/components/Watermark";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -82,6 +83,7 @@ export default function LoginPage() {
   return (
     <div className="isolate relative min-h-screen overflow-hidden">
       <Watermark />
+      <ThemeToggle className="absolute top-4 right-4" />
       <div className="relative mx-auto flex min-h-screen max-w-sm flex-col justify-center px-4">
         <div className="mb-4">
           <Logo iconSize={40} />
@@ -109,7 +111,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={forgotSubmitting}
-            className="rounded-md bg-black px-3 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
+            className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             {forgotSubmitting ? "Sending…" : "Send reset link"}
           </button>
@@ -166,7 +168,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-md bg-black px-3 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
+          className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {submitting
             ? "Please wait…"

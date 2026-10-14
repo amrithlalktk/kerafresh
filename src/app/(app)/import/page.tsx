@@ -483,7 +483,7 @@ export default function ImportPage() {
             <button
               onClick={handleImport}
               disabled={importing || validCount === 0}
-              className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-40 dark:bg-white dark:text-black"
+              className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
             >
               {importing
                 ? `Importing ${progress.done}/${progress.total}…`
