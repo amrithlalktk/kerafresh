@@ -12,6 +12,7 @@ import QuickEntryRow from "@/components/QuickEntryRow";
 import PaymentHistory from "@/components/PaymentHistory";
 import PaymentStatusIcon from "@/components/PaymentStatusIcon";
 import SearchInput from "@/components/SearchInput";
+import ForwardSalesPanel, { type ForwardSale } from "@/components/ForwardSalesPanel";
 
 export default function SalePage() {
   const searchParams = useSearchParams();
@@ -33,6 +34,25 @@ export default function SalePage() {
   const [editing, setEditing] = useState<Sale | undefined>(undefined);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  // Sales register vs forward sales — chosen from the sidebar's Sale
+  // dropdown (?tab=forward).
+  const [tab, setTab] = useState<"SALES" | "FORWARD">(
+    searchParams.get("tab") === "forward" ? "FORWARD" : "SALES"
+  );
+  const [openForwards, setOpenForwards] = useState<ForwardSale[]>([]);
+
+  const loadForwards = useCallback(async () => {
+    const res = await fetch("/api/forward-sales?status=OPEN");
+    if (res.ok) setOpenForwards(await res.json());
+  }, []);
+
+  useEffect(() => {
+    loadForwards();
+  }, [loadForwards]);
+
+  useEffect(() => {
+    setTab(searchParams.get("tab") === "forward" ? "FORWARD" : "SALES");
+  }, [searchParams]);
 
   const loadLookups = useCallback(async () => {
     const [partiesRes, itemsRes, chargeTypesRes] = await Promise.all([
@@ -83,11 +103,13 @@ export default function SalePage() {
     setAdvancedOpen(false);
     if (!wasEditing) setPage(1);
     loadSales();
+    loadForwards();
   }
 
   function handleQuickSaved() {
     setPage(1);
     loadSales();
+    loadForwards();
   }
 
   function toggleSort(field: "date" | "billNumber") {
@@ -103,7 +125,10 @@ export default function SalePage() {
   async function handleDelete(sale: Sale) {
     if (!confirm("Delete this sale? This can't be undone.")) return;
     const res = await fetch(`/api/sales/${sale.id}`, { method: "DELETE" });
-    if (res.ok) loadSales();
+    if (res.ok) {
+      loadSales();
+      loadForwards();
+    }
     else {
       const data = await res.json();
       alert(data.error ?? "Could not delete sale");
@@ -113,17 +138,23 @@ export default function SalePage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-lg font-semibold">Sale</h1>
-        <SearchInput
-          value={search}
-          onChange={(v) => {
-            setPage(1);
-            setSearch(v);
-          }}
-          placeholder="Search party or item…"
-        />
+        <h1 className="text-lg font-semibold">{tab === "FORWARD" ? "Forward sales" : "Sale"}</h1>
+        {tab === "SALES" && (
+          <SearchInput
+            value={search}
+            onChange={(v) => {
+              setPage(1);
+              setSearch(v);
+            }}
+            placeholder="Search party or item…"
+          />
+        )}
       </div>
 
+      {tab === "FORWARD" ? (
+        <ForwardSalesPanel parties={parties} items={items} canDelete={canDelete} onChanged={loadForwards} />
+      ) : (
+      <>
       <div ref={formRef}>
         {editing || advancedOpen ? (
           <Card title={editing ? "Editing sale" : "Advanced entry (multiple items, charges)"}>
@@ -134,6 +165,7 @@ export default function SalePage() {
               items={items}
               chargeTypes={chargeTypes}
               initial={editing}
+              forwardSales={openForwards}
               onSaved={handleSaved}
               onCancelEdit={() => {
                 setEditing(undefined);
@@ -192,6 +224,7 @@ export default function SalePage() {
                 items={items}
                 onPartyCreated={(p) => setParties((prev) => [...prev, p])}
                 onItemCreated={(i) => setItems((prev) => [...prev, i])}
+                forwardSales={openForwards}
                 onSaved={handleQuickSaved}
               />
               <tr>
@@ -223,7 +256,14 @@ export default function SalePage() {
                     <td className="px-4 py-3">
                       <div className="flex flex-col gap-0.5">
                         {sale.items.map((l) => (
-                          <span key={l.id}>{l.item.name}</span>
+                          <span key={l.id}>
+                            {l.item.name}
+                            {l.forwardSale && (
+                              <span className="ml-1.5 rounded-full bg-[#f5a524]/20 px-1.5 text-xs text-[#9a6200]">
+                                Fwd #{formatBillNumber(l.forwardSale.number)}
+                              </span>
+                            )}
+                          </span>
                         ))}
                         {sale.charges.map((c) => (
                           <span key={c.id} className="text-black/50 dark:text-white/50">
@@ -347,6 +387,8 @@ export default function SalePage() {
             Next
           </button>
         </div>
+      )}
+      </>
       )}
     </div>
   );

@@ -95,6 +95,10 @@ const saleLineSchema = z.object({
   price: z.number().nonnegative("Price can't be negative"),
   taxPercent: z.number().min(0, "Tax % can't be negative").max(100, "Tax % can't exceed 100").default(0),
   ffaGrade: z.enum(FFA_GRADES).optional().nullable(),
+  // Sale lines only: the forward sale this delivers against. Omitted =
+  // match the party's oldest open forward sale for the item; null = not
+  // against any forward sale.
+  forwardSaleId: z.string().min(1).nullable().optional(),
 });
 
 const chargeLineSchema = z.object({
@@ -180,4 +184,17 @@ export const stockAdjustmentSchema = z.object({
   mode: z.enum(["SET", "CHANGE"]),
   quantity: z.number().finite("Enter a quantity"),
   reason: z.string().trim().optional().nullable(),
+});
+
+// A forward sale — quantity agreed to be sold to a party at a fixed rate,
+// delivered later (see ForwardSale in schema.prisma).
+export const forwardSaleSchema = z.object({
+  date: z.string().min(1, "Date is required"),
+  partyId: z.string().min(1, "Choose the party"),
+  itemId: z.string().min(1, "Choose the item"),
+  quantity: z.number().positive("Quantity must be greater than 0"),
+  rate: z.number().nonnegative("Rate can't be negative"),
+  dueDate: z.string().optional().nullable(),
+  notes: z.string().trim().optional().nullable(),
+  closed: z.boolean().optional(),
 });

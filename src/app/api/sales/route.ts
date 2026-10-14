@@ -3,13 +3,19 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { saleSchema } from "@/lib/validation";
 import { toCents } from "@/lib/money";
+import { resolveForwardLinks } from "@/lib/forwardSales";
 import { getAvailableAdvanceForSalesMap } from "@/lib/balances";
 import { Prisma } from "@prisma/client";
 
 const PAGE_SIZE = 25;
 const SALE_INCLUDE = {
   party: { select: { name: true } },
-  items: { include: { item: { select: { name: true, unit: true } } } },
+  items: {
+    include: {
+      item: { select: { name: true, unit: true } },
+      forwardSale: { select: { id: true, number: true } },
+    },
+  },
   charges: true,
   payments: {
     orderBy: { date: "asc" },
@@ -111,7 +117,10 @@ export async function POST(request: Request) {
     }
   }
 
-  const lineData = items.map((line) => {
+  // Each line may deliver against one of the party's forward sales.
+  const forward = await resolveForwardLinks(partyId, items);
+  if (forward.error) return NextResponse.json({ error: forward.error }, { status: 400 });
+  const lineData = items.map((line, i) => {
     const priceCents = toCents(line.price);
     // Quantity is in KG and can be fractional (e.g. 1.5) — round to whole
     // cents since lineTotalCents is stored as an integer.
@@ -125,6 +134,7 @@ export async function POST(request: Request) {
       taxPercent: line.taxPercent,
       taxCents,
       ffaGrade: line.ffaGrade ?? null,
+      forwardSaleId: forward.ids[i],
     };
   });
   const chargeData = charges.map((charge) => ({

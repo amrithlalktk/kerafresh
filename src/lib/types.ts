@@ -174,6 +174,8 @@ export type SaleItemLine = {
   id: string;
   itemId: string;
   item: { name: string; unit: string };
+  // The forward sale this line delivers against, if any.
+  forwardSale?: { id: string; number: number } | null;
   quantity: number;
   priceCents: number;
   lineTotalCents: number;

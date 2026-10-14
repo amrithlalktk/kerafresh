@@ -37,7 +37,7 @@ export async function DELETE(
       where: { id },
       include: {
         party: { select: { name: true } },
-        items: { include: { item: { select: { name: true, unit: true } } } },
+        items: { include: { item: { select: { name: true, unit: true } }, forwardSale: { select: { id: true, number: true } } } },
         charges: true,
         payments: {
           orderBy: { date: "asc" },

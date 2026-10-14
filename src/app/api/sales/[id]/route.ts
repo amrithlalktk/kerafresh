@@ -4,11 +4,17 @@ import { getSession } from "@/lib/auth";
 import { isAdminRole } from "@/lib/types";
 import { saleSchema } from "@/lib/validation";
 import { toCents } from "@/lib/money";
+import { resolveForwardLinks } from "@/lib/forwardSales";
 import { Prisma } from "@prisma/client";
 
 const SALE_INCLUDE = {
   party: { select: { name: true } },
-  items: { include: { item: { select: { name: true, unit: true } } } },
+  items: {
+    include: {
+      item: { select: { name: true, unit: true } },
+      forwardSale: { select: { id: true, number: true } },
+    },
+  },
   charges: true,
   payments: {
     orderBy: { date: "asc" },
@@ -62,7 +68,10 @@ export async function PATCH(
   // (POST /api/sales/[id]/payments), so editing item/charge details can
   // never clobber payments already recorded against it.
   const { date, partyId, items, charges, notes, billNumber } = parsed.data;
-  const lineData = items.map((line) => {
+  // Each line may deliver against one of the party's forward sales.
+  const forward = await resolveForwardLinks(partyId, items, id);
+  if (forward.error) return NextResponse.json({ error: forward.error }, { status: 400 });
+  const lineData = items.map((line, i) => {
     const priceCents = toCents(line.price);
     // Quantity is in KG and can be fractional (e.g. 1.5) — round to whole
     // cents since lineTotalCents is stored as an integer.
@@ -76,6 +85,7 @@ export async function PATCH(
       taxPercent: line.taxPercent,
       taxCents,
       ffaGrade: line.ffaGrade ?? null,
+      forwardSaleId: forward.ids[i],
     };
   });
   const chargeData = charges.map((charge) => ({

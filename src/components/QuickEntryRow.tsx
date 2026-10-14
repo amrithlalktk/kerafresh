@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { formatCents } from "@/lib/money";
+import { formatBillNumber, formatCents } from "@/lib/money";
 import { FFA_GRADES, type Item, type Party } from "@/lib/types";
 import SuggestInput from "@/components/SuggestInput";
+import type { ForwardSale } from "@/components/ForwardSalesPanel";
+import { displayUnit } from "@/lib/units";
 
 // No width utility here on purpose — each input below sets its own width
 // explicitly. Mixing a shared "w-full" with a per-field fixed width (e.g. on
@@ -35,6 +37,7 @@ export default function QuickEntryRow({
   onPartyCreated,
   onItemCreated,
   onSaved,
+  forwardSales = [],
 }: {
   mode: "SALE" | "PURCHASE";
   parties: Party[];
@@ -42,6 +45,8 @@ export default function QuickEntryRow({
   onPartyCreated: (party: Party) => void;
   onItemCreated: (item: Item) => void;
   onSaved: () => void;
+  // Open forward sales (Sale mode) — a matching one is delivered against.
+  forwardSales?: ForwardSale[];
 }) {
   const apiBase = mode === "SALE" ? "/api/sales" : "/api/purchases";
 
@@ -56,6 +61,7 @@ export default function QuickEntryRow({
   const [taxPercent, setTaxPercent] = useState("0");
   const [ffaGrade, setFfaGrade] = useState("");
   const [useAdvance, setUseAdvance] = useState(true);
+  const [againstForward, setAgainstForward] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,6 +99,15 @@ export default function QuickEntryRow({
   const matchedParty = parties.find(
     (p) => p.name.toLowerCase() === partyName.trim().toLowerCase()
   );
+  // The party's oldest open forward sale for this item — the server counts
+  // the line against it unless the user unticks it.
+  const openForward =
+    mode === "SALE" && matchedParty && matchedItem
+      ? forwardSales
+          .filter((f) => f.party.id === matchedParty.id && f.item.id === matchedItem.id)
+          .sort((a, b) => a.date.localeCompare(b.date) || a.number - b.number)[0]
+      : undefined;
+
   const availableAdvanceCents =
     mode === "SALE"
       ? matchedParty?.availableAdvanceCents ?? 0
@@ -183,6 +198,8 @@ export default function QuickEntryRow({
               price: priceNum,
               taxPercent: taxPercentNum,
               ffaGrade: needsFfaGrade ? ffaGrade : null,
+              // Omitted = server matches the oldest open forward sale.
+              ...(openForward && !againstForward ? { forwardSaleId: null } : {}),
             },
           ],
           charges: [],
@@ -207,6 +224,7 @@ export default function QuickEntryRow({
       setPrice("");
       setTaxPercent("0");
       setFfaGrade("");
+      setAgainstForward(true);
       if (mode === "SALE") setBillNumber(String(Number(billNumber) + 1));
       onSaved();
       itemInputRef.current?.focus();
@@ -288,6 +306,32 @@ export default function QuickEntryRow({
           onKeyDown={handleKeyDown}
           className={`${cellInputClass} w-full`}
         />
+        {openForward && (
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-[#9a6200]">
+            <label className="flex items-center gap-1">
+              <input
+                type="checkbox"
+                checked={againstForward}
+                onChange={(e) => setAgainstForward(e.target.checked)}
+                className="accent-[#5b3fd0]"
+              />
+              Against Fwd #{formatBillNumber(openForward.number)}
+            </label>
+            <span>
+              {Number(openForward.pendingQty.toFixed(2))} {displayUnit(openForward.item.unit)} pending @{" "}
+              {formatCents(openForward.rateCents)}
+            </span>
+            {againstForward && price === "" && (
+              <button
+                type="button"
+                onClick={() => setPrice((openForward.rateCents / 100).toString())}
+                className="underline underline-offset-2"
+              >
+                use rate
+              </button>
+            )}
+          </div>
+        )}
         {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
       </td>
       <td className="p-1 align-top">

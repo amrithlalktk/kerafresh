@@ -71,6 +71,7 @@ model User {
   notifyEmails        String?
   transactions        Transaction[]
   sales               Sale[]
+  forwardSales        ForwardSale[]
   purchases           Purchase[]
   advancePayments     PartyPayment[]
   passwordResetTokens PasswordResetToken[]
@@ -180,6 +181,7 @@ model Party {
   openingBalanceCents Int            @default(0)
   createdAt           DateTime       @default(now())
   sales               Sale[]
+  forwardSales        ForwardSale[]
   purchases           Purchase[]
   advancePayments     PartyPayment[]
 }
@@ -224,6 +226,7 @@ model Item {
   ffaGraded         Boolean           @default(false)
   createdAt         DateTime          @default(now())
   saleItems         SaleItem[]
+  forwardSales      ForwardSale[]
   purchaseItems     PurchaseItem[]
   stockAdjustments  StockAdjustment[]
 }
@@ -292,10 +295,10 @@ model SalePayment {
 }
 
 model SaleItem {
-  id             String  @id @default(cuid())
-  sale           Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  sale           Sale         @relation(fields: [saleId], references: [id], onDelete: Cascade)
   saleId         String
-  item           Item    @relation(fields: [itemId], references: [id])
+  item           Item         @relation(fields: [itemId], references: [id])
   itemId         String
   // KG, can be fractional (e.g. 1.5).
   quantity       Float
@@ -303,12 +306,19 @@ model SaleItem {
   // Pre-tax: quantity * priceCents.
   lineTotalCents Int
   // GST-style rate for this line (e.g. 18 for 18%) — 0 for no tax.
-  taxPercent     Float   @default(0)
+  taxPercent     Float        @default(0)
   // round(lineTotalCents * taxPercent / 100), stored so historical bills
   // don't recompute differently if the item's price changes later.
-  taxCents       Int     @default(0)
+  taxCents       Int          @default(0)
   // FFA grade (e.g. "FFA-3") — only set when the item is ffaGraded.
   ffaGrade       String?
+  // The forward sale this line delivers against (see ForwardSale) — its
+  // quantity counts as delivered there. Deleting the forward sale keeps
+  // the sale, just unlinked.
+  forwardSale    ForwardSale? @relation(fields: [forwardSaleId], references: [id], onDelete: SetNull)
+  forwardSaleId  String?
+
+  @@index([forwardSaleId])
 }
 
 // A manual correction to an item's stock — e.g. after a physical count,
@@ -327,6 +337,36 @@ model StockAdjustment {
   createdAt  DateTime @default(now())
 
   @@index([itemId])
+}
+
+// A forward sale: a quantity of an item agreed to be sold to a party at a
+// fixed rate, delivered later — usually over several sale bills. It's only
+// a commitment: party balances and stock change when the actual sales
+// (deliveries) are billed. Delivered = sum of linked SaleItem quantities;
+// pending = quantity − delivered.
+model ForwardSale {
+  id         String     @id @default(cuid())
+  // Own series, shown as "Fwd #001".
+  number     Int        @unique
+  date       DateTime
+  party      Party      @relation(fields: [partyId], references: [id])
+  partyId    String
+  item       Item       @relation(fields: [itemId], references: [id])
+  itemId     String
+  quantity   Float
+  rateCents  Int
+  // Optional date the goods are due by.
+  dueDate    DateTime?
+  notes      String?
+  // Closed by hand (e.g. the party cancelled the rest) — stops new
+  // deliveries being matched to it even if quantity is still pending.
+  closed     Boolean    @default(false)
+  recordedBy User       @relation(fields: [userId], references: [id])
+  userId     String
+  createdAt  DateTime   @default(now())
+  deliveries SaleItem[]
+
+  @@index([partyId, itemId])
 }
 
 model SaleCharge {

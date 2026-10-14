@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -18,6 +18,10 @@ import {
   Table2,
   AtSign,
   Landmark,
+  HandCoins,
+  CalendarClock,
+  ChevronDown,
+  ReceiptText,
   X,
 } from "lucide-react";
 import type { SessionPayload } from "@/lib/auth";
@@ -36,10 +40,23 @@ const LINKS = [
   { href: "/notes", label: "Notes", icon: Table2, adminOnly: false },
   { href: "/email-contacts", label: "Email Contacts", icon: AtSign, adminOnly: false },
   { href: "/accounts", label: "Accounts", icon: Landmark, adminOnly: true },
+  { href: "/capital", label: "Partners & Capital", icon: HandCoins, adminOnly: true },
   { href: "/import", label: "Import", icon: Upload, adminOnly: true },
   { href: "/categories", label: "Categories", icon: Tags, adminOnly: true },
   { href: "/users", label: "Users", icon: UserCog, adminOnly: true },
 ];
+
+// Links that open as a dropdown group instead of navigating directly —
+// `tab` is the ?tab= value that page uses (null = its default tab).
+const SUB_LINKS: Record<
+  string,
+  { href: string; label: string; icon: typeof CalendarClock; tab: string | null }[]
+> = {
+  "/sale": [
+    { href: "/sale", label: "Sales", icon: ReceiptText, tab: null },
+    { href: "/sale?tab=forward", label: "Forward sales", icon: CalendarClock, tab: "forward" },
+  ],
+};
 
 // Fixed and always visible on desktop (md+); on narrower screens it's an
 // off-canvas drawer toggled from TopBar's hamburger button, since a
@@ -54,6 +71,24 @@ export default function Sidebar({
   onClose: () => void;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const tab = searchParams.get("tab");
+  // Which dropdown groups are open — a group starts open while you're in it.
+  const [openGroups, setOpenGroups] = useState<Set<string>>(
+    () => new Set(Object.keys(SUB_LINKS).filter((href) => pathname.startsWith(href)))
+  );
+  useEffect(() => {
+    const current = Object.keys(SUB_LINKS).find((href) => pathname.startsWith(href));
+    if (current) setOpenGroups((prev) => (prev.has(current) ? prev : new Set(prev).add(current)));
+  }, [pathname]);
+  function toggleGroup(href: string) {
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(href)) next.delete(href);
+      else next.add(href);
+      return next;
+    });
+  }
 
   // Any navigation (tapping a link) should close the mobile drawer — on
   // desktop this is a no-op since the drawer transform is overridden there.
@@ -108,20 +143,68 @@ export default function Sidebar({
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3">
           {LINKS.filter((l) => !l.adminOnly || isAdminRole(session.role)).map((link) => {
             const Icon = link.icon;
-            const active = pathname.startsWith(link.href);
+            const subs = SUB_LINKS[link.href];
+            const inSection = pathname.startsWith(link.href);
+            if (!subs) {
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm backdrop-blur-sm transition-colors ${
+                    inSection
+                      ? "bg-brand/85 font-medium text-white"
+                      : "hover:bg-black/5 hover:text-black"
+                  }`}
+                >
+                  <Icon size={18} strokeWidth={2} />
+                  {link.label}
+                </Link>
+              );
+            }
+            const open = openGroups.has(link.href);
+            const activeSub = inSection
+              ? (subs.find((s) => s.tab === tab) ?? subs.find((s) => s.tab === null))
+              : undefined;
             return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm backdrop-blur-sm transition-colors ${
-                  active
-                    ? "bg-brand/85 font-medium text-white"
-                    : "hover:bg-black/5 hover:text-black"
-                }`}
-              >
-                <Icon size={18} strokeWidth={2} />
-                {link.label}
-              </Link>
+              <div key={link.href} className="flex flex-col gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(link.href)}
+                  aria-expanded={open}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm backdrop-blur-sm transition-colors ${
+                    inSection && !open
+                      ? "bg-brand/85 font-medium text-white"
+                      : inSection
+                        ? "font-medium text-brand hover:bg-black/5"
+                        : "hover:bg-black/5 hover:text-black"
+                  }`}
+                >
+                  <Icon size={18} strokeWidth={2} />
+                  {link.label}
+                  <ChevronDown
+                    size={16}
+                    className={`ml-auto transition-transform ${open ? "rotate-180" : ""}`}
+                  />
+                </button>
+                {open && subs.map((s) => {
+                  const SubIcon = s.icon;
+                  const subActive = activeSub?.href === s.href;
+                  return (
+                    <Link
+                      key={s.href}
+                      href={s.href}
+                      className={`ml-6 flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] transition-colors ${
+                        subActive
+                          ? "bg-brand/85 font-medium text-white"
+                          : "hover:bg-black/5 hover:text-black"
+                      }`}
+                    >
+                      <SubIcon size={15} strokeWidth={2} />
+                      {s.label}
+                    </Link>
+                  );
+                })}
+              </div>
             );
           })}
         </nav>

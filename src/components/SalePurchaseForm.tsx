@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Trash2 } from "lucide-react";
-import { formatCents } from "@/lib/money";
+import { formatBillNumber, formatCents } from "@/lib/money";
 import {
   FFA_GRADES,
   type ChargeType,
@@ -14,6 +14,7 @@ import {
 } from "@/lib/types";
 import AccountOptions from "@/components/AccountOptions";
 import { useAccounts } from "@/lib/useAccounts";
+import type { ForwardSale } from "@/components/ForwardSalesPanel";
 
 const inputClass =
   "rounded-md border border-black/15 px-3 py-2 text-sm dark:border-white/15 dark:bg-transparent";
@@ -28,11 +29,14 @@ type Line = {
   price: string;
   taxPercent: string;
   ffaGrade: string;
+  // Sale only: "auto" = server picks the oldest open forward sale for the
+  // party+item, "" = not against a forward sale, otherwise its id.
+  forward: string;
 };
 type ChargeLineInput = { chargeTypeId: string; label: string; amount: string };
 
 function emptyLine(): Line {
-  return { itemId: "", quantity: "1", price: "", taxPercent: "0", ffaGrade: "" };
+  return { itemId: "", quantity: "1", price: "", taxPercent: "0", ffaGrade: "", forward: "auto" };
 }
 
 function emptyCharge(): ChargeLineInput {
@@ -51,6 +55,7 @@ export default function SalePurchaseForm({
   initial,
   onSaved,
   onCancelEdit,
+  forwardSales = [],
 }: {
   mode: Mode;
   parties: Party[];
@@ -59,6 +64,8 @@ export default function SalePurchaseForm({
   initial?: Sale | Purchase;
   onSaved: () => void;
   onCancelEdit: () => void;
+  // Open forward sales (Sale mode) offered per line.
+  forwardSales?: ForwardSale[];
 }) {
   const apiBase = mode === "SALE" ? "/api/sales" : "/api/purchases";
 
@@ -76,6 +83,7 @@ export default function SalePurchaseForm({
           price: (l.priceCents / 100).toString(),
           taxPercent: String(l.taxPercent),
           ffaGrade: l.ffaGrade ?? "",
+          forward: "forwardSale" in l ? (l.forwardSale?.id ?? "") : "",
         }))
       : [emptyLine()]
   );
@@ -204,6 +212,7 @@ export default function SalePurchaseForm({
             price: Number(l.price) || 0,
             taxPercent: Number(l.taxPercent) || 0,
             ffaGrade: l.ffaGrade || null,
+            ...(mode === "SALE" && l.forward !== "auto" ? { forwardSaleId: l.forward || null } : {}),
           })),
           charges: validCharges.map((c) => ({
             chargeTypeId: c.chargeTypeId === OTHER_CHARGE ? null : c.chargeTypeId || null,
@@ -320,6 +329,30 @@ export default function SalePurchaseForm({
                         </option>
                       ))}
                     </select>
+                    {mode === "SALE" && line.itemId && partyId && (() => {
+                      // Forward sales this line could deliver against.
+                      const options = forwardSales
+                        .filter((f) => f.party.id === partyId && f.item.id === line.itemId)
+                        .sort((a, b) => a.date.localeCompare(b.date) || a.number - b.number);
+                      const keepsOther = line.forward && line.forward !== "auto" && !options.some((o) => o.id === line.forward);
+                      if (options.length === 0 && !keepsOther) return null;
+                      return (
+                        <select
+                          value={line.forward}
+                          onChange={(e) => updateLine(index, { forward: e.target.value })}
+                          className="w-full border-0 border-t border-black/5 bg-[#f5a524]/[0.06] px-2 py-1 text-xs text-[#9a6200] focus:outline-none"
+                        >
+                          <option value="auto">Forward: auto (oldest open)</option>
+                          {options.map((f) => (
+                            <option key={f.id} value={f.id}>
+                              Fwd #{formatBillNumber(f.number)} · {Number(f.pendingQty.toFixed(2))} pending @ {formatCents(f.rateCents)}
+                            </option>
+                          ))}
+                          {keepsOther && <option value={line.forward}>Current forward sale</option>}
+                          <option value="">Not against a forward sale</option>
+                        </select>
+                      );
+                    })()}
                   </td>
                   <td className="border border-black/10 p-0 dark:border-white/10">
                     <input
