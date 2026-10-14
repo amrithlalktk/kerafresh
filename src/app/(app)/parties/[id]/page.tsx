@@ -13,7 +13,7 @@ import RecordPaymentForm from "@/components/RecordPaymentForm";
 import BillPreviewModal, { type PreviewBillType } from "@/components/BillPreviewModal";
 import EmailPdfButton from "@/components/EmailPdfButton";
 
-const STATEMENT_HEADER = ["Date", "Type", "Reference", "Debit", "Credit", "Balance"];
+const STATEMENT_HEADER = ["Date", "Type", "Reference", "Item", "Weight", "Price", "Debit", "Credit", "Balance"];
 
 export default function PartyStatementPage() {
   const params = useParams<{ id: string }>();
@@ -78,22 +78,49 @@ export default function PartyStatementPage() {
   const ledger = buildLedger(sales, purchases, advances);
   const balances = runningBalances(ledger, party.openingBalanceCents);
 
+  // A Sale/Purchase entry carries its item lines — exploded into one row
+  // per item (bill-level Reference/Debit/Credit/Balance shown only on the
+  // first item row) so the statement shows what was actually billed, not
+  // just a bare "Sale #12" reference. Every other entry type (payments,
+  // advances) has no items and stays a single row as before.
   function statementRows() {
     const rows: string[][] = [];
     if (party!.openingBalanceCents !== 0) {
-      rows.push(["", "Opening balance", "", "", "", (party!.openingBalanceCents / 100).toFixed(2)]);
+      rows.push([
+        "",
+        "Opening balance",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        (party!.openingBalanceCents / 100).toFixed(2),
+      ]);
     }
     ledger.forEach((entry, index) => {
       const debit = entry.amountCents > 0 ? (entry.amountCents / 100).toFixed(2) : "";
       const credit = entry.amountCents < 0 ? (-entry.amountCents / 100).toFixed(2) : "";
-      rows.push([
-        formatDate(entry.date),
-        entry.type,
-        entry.note ? `${entry.ref} (${entry.note})` : entry.ref,
-        debit,
-        credit,
-        (balances[index] / 100).toFixed(2),
-      ]);
+      const ref = entry.note ? `${entry.ref} (${entry.note})` : entry.ref;
+      const balance = (balances[index] / 100).toFixed(2);
+      const items = entry.items ?? [];
+      if (items.length === 0) {
+        rows.push([formatDate(entry.date), entry.type, ref, "", "", "", debit, credit, balance]);
+        return;
+      }
+      items.forEach((item, i) => {
+        rows.push([
+          i === 0 ? formatDate(entry.date) : "",
+          i === 0 ? entry.type : "",
+          i === 0 ? ref : "",
+          item.name,
+          String(item.quantity),
+          (item.priceCents / 100).toFixed(2),
+          i === 0 ? debit : "",
+          i === 0 ? credit : "",
+          i === 0 ? balance : "",
+        ]);
+      });
     });
     return rows;
   }

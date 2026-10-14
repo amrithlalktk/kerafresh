@@ -1,6 +1,8 @@
 import { formatBillNumber, formatCents } from "@/lib/money";
 import type { PartyPaymentDirection, PaymentSource } from "@/lib/types";
 
+export type LedgerItem = { name: string; quantity: number; priceCents: number };
+
 export type LedgerEntry = {
   date: string | Date;
   type: string;
@@ -10,6 +12,10 @@ export type LedgerEntry = {
   // Set only for entries tied to an actual Sale/Purchase (not Advance
   // entries) — lets the UI offer a click-to-preview on the reference.
   bill?: { type: "SALE" | "PURCHASE"; id: string };
+  // Set only on the "Sale"/"Purchase" entry itself (not its payment/advance
+  // entries, which have no items of their own) — lets exports show what was
+  // actually in the bill instead of just its reference.
+  items?: LedgerItem[];
 };
 
 // Only the fields this module actually reads — `date` as `string | Date` so
@@ -26,11 +32,13 @@ type LedgerPayment = {
   // separate "Advance" entry.
   excessPartyPayment: { amountCents: number } | null;
 };
+type LedgerBillItem = { item: { name: string }; quantity: number; priceCents: number };
 type LedgerSale = {
   id: string;
   date: string | Date;
   billNumber: number;
   totalCents: number;
+  items: LedgerBillItem[];
   payments: LedgerPayment[];
 };
 type LedgerPurchase = {
@@ -38,6 +46,7 @@ type LedgerPurchase = {
   date: string | Date;
   billNumber: number;
   totalCents: number;
+  items: LedgerBillItem[];
   payments: LedgerPayment[];
 };
 type LedgerAdvance = {
@@ -75,6 +84,7 @@ export function buildLedger(
       ref: `Sale #${formatBillNumber(s.billNumber)}`,
       amountCents: s.totalCents,
       bill,
+      items: s.items.map((l) => ({ name: l.item.name, quantity: l.quantity, priceCents: l.priceCents })),
     });
     for (const p of s.payments) {
       if (p.source === "ADVANCE") {
@@ -111,6 +121,7 @@ export function buildLedger(
       ref: `Purchase #${formatBillNumber(p.billNumber)}`,
       amountCents: -p.totalCents,
       bill,
+      items: p.items.map((l) => ({ name: l.item.name, quantity: l.quantity, priceCents: l.priceCents })),
     });
     for (const pay of p.payments) {
       if (pay.source === "ADVANCE") {
