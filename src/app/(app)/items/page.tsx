@@ -8,6 +8,7 @@ import Modal from "@/components/Modal";
 import Card from "@/components/Card";
 import ItemForm from "@/components/ItemForm";
 import SearchInput from "@/components/SearchInput";
+import StockAdjustModal from "@/components/StockAdjustModal";
 
 export default function ItemsPage() {
   const searchParams = useSearchParams();
@@ -19,6 +20,7 @@ export default function ItemsPage() {
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Item | undefined>(undefined);
+  const [adjusting, setAdjusting] = useState<Item | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/items");
@@ -100,9 +102,21 @@ export default function ItemsPage() {
                     <td className="px-4 py-3">{item.name}</td>
                     <td className="px-4 py-3">{item.unit}</td>
                     <td className={`px-4 py-3 text-right ${low ? "text-[#d03b3b] font-medium" : ""}`}>
-                      {item.currentStockQty} {item.unit}
+                      <button
+                        onClick={() => setAdjusting(item)}
+                        title="Adjust stock"
+                        className="underline decoration-dotted underline-offset-4 hover:text-brand"
+                      >
+                        {Number(item.currentStockQty.toFixed(3))} {item.unit}
+                      </button>
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <button
+                        onClick={() => setAdjusting(item)}
+                        className="mr-2 font-medium text-brand underline underline-offset-4"
+                      >
+                        Adjust stock
+                      </button>
                       <button onClick={() => openEdit(item)} className="mr-2 underline underline-offset-4">
                         Edit
                       </button>
@@ -129,6 +143,15 @@ export default function ItemsPage() {
           </table>
         </div>
       </Card>
+
+      {adjusting && (
+        <StockAdjustModal
+          item={adjusting}
+          canDelete={canDelete}
+          onClose={() => setAdjusting(null)}
+          onChanged={load}
+        />
+      )}
 
       {modalOpen && (
         <Modal title={editing ? "Edit item" : "Add item"} onClose={() => setModalOpen(false)}>

@@ -172,3 +172,12 @@ export const accountTransferSchema = z
     message: "Choose two different accounts",
     path: ["toAccountId"],
   });
+
+// A stock correction on an item: either "the stock is now N" (SET — the
+// difference is recorded) or "add/remove N" (CHANGE, signed).
+export const stockAdjustmentSchema = z.object({
+  date: z.string().min(1, "Date is required"),
+  mode: z.enum(["SET", "CHANGE"]),
+  quantity: z.number().finite("Enter a quantity"),
+  reason: z.string().trim().optional().nullable(),
+});

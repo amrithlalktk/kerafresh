@@ -412,9 +412,11 @@ export async function getOldestUnpaidPurchaseDateByParty() {
 }
 
 export async function getItemStockMap() {
-  const [saleQty, purchaseQty] = await Promise.all([
+  const [saleQty, purchaseQty, adjustQty] = await Promise.all([
     db.saleItem.groupBy({ by: ["itemId"], _sum: { quantity: true } }),
     db.purchaseItem.groupBy({ by: ["itemId"], _sum: { quantity: true } }),
+    // Manual corrections (physical count, losses…) — signed quantities.
+    db.stockAdjustment.groupBy({ by: ["itemId"], _sum: { quantity: true } }),
   ]);
 
   const deltaByItem = new Map<string, number>();
@@ -423,6 +425,9 @@ export async function getItemStockMap() {
   }
   for (const row of saleQty) {
     deltaByItem.set(row.itemId, (deltaByItem.get(row.itemId) ?? 0) - (row._sum.quantity ?? 0));
+  }
+  for (const row of adjustQty) {
+    deltaByItem.set(row.itemId, (deltaByItem.get(row.itemId) ?? 0) + (row._sum.quantity ?? 0));
   }
   return deltaByItem;
 }

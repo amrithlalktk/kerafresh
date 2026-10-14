@@ -75,6 +75,7 @@ model User {
   advancePayments     PartyPayment[]
   passwordResetTokens PasswordResetToken[]
   accountTransfers    AccountTransfer[]
+  stockAdjustments    StockAdjustment[]
 }
 
 // A one-time link emailed to a user who forgot their password. `tokenHash`
@@ -213,17 +214,18 @@ model PartyPayment {
 }
 
 model Item {
-  id                String         @id @default(cuid())
+  id                String            @id @default(cuid())
   name              String
-  unit              String         @default("pcs")
-  openingStockQty   Int            @default(0)
+  unit              String            @default("pcs")
+  openingStockQty   Int               @default(0)
   lowStockThreshold Int?
   // When true, a Sale/Purchase line for this item asks for an FFA grade
   // (FFA-1..FFA-10) — a quality rating, not every item needs one.
-  ffaGraded         Boolean        @default(false)
-  createdAt         DateTime       @default(now())
+  ffaGraded         Boolean           @default(false)
+  createdAt         DateTime          @default(now())
   saleItems         SaleItem[]
   purchaseItems     PurchaseItem[]
+  stockAdjustments  StockAdjustment[]
 }
 
 // A manageable list of extra charge types (lorry rent, packing charge,
@@ -307,6 +309,24 @@ model SaleItem {
   taxCents       Int     @default(0)
   // FFA grade (e.g. "FFA-3") — only set when the item is ffaGraded.
   ffaGrade       String?
+}
+
+// A manual correction to an item's stock — e.g. after a physical count,
+// for shrinkage/moisture loss, or damaged goods. `quantity` is signed
+// (+ adds stock, − removes it). Current stock = opening + purchases −
+// sales + adjustments (see getItemStockMap).
+model StockAdjustment {
+  id         String   @id @default(cuid())
+  item       Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemId     String
+  date       DateTime
+  quantity   Float
+  reason     String?
+  recordedBy User     @relation(fields: [userId], references: [id])
+  userId     String
+  createdAt  DateTime @default(now())
+
+  @@index([itemId])
 }
 
 model SaleCharge {
