@@ -259,41 +259,58 @@ export default function PartyStatementPage() {
                 </tr>
               )}
               {ledger.map((entry, index) => {
-                return (
-                  <tr key={index} className="border-t border-black/5 dark:border-white/5">
-                    <td className="px-4 py-3 whitespace-nowrap">{formatDate(entry.date)}</td>
-                    <td className="px-4 py-3">{entry.type}</td>
-                    <td className="px-4 py-3">
-                      {entry.bill ? (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setPreviewBill({ type: entry.bill!.type, id: entry.bill!.id })
-                          }
-                          className="underline underline-offset-4 hover:text-black dark:hover:text-white"
-                        >
-                          {entry.ref}
-                        </button>
-                      ) : (
-                        entry.ref
-                      )}
-                      {entry.note && (
-                        <span className="block text-xs text-black/50 dark:text-white/50">
-                          {entry.note}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap text-[#0ca30c]">
-                      {entry.amountCents > 0 ? formatCents(entry.amountCents) : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap text-[#d03b3b]">
-                      {entry.amountCents < 0 ? formatCents(-entry.amountCents) : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium whitespace-nowrap">
-                      {formatCents(balances[index])}
-                    </td>
-                  </tr>
-                );
+                return [
+                    <tr key={index} className="border-t border-black/5 dark:border-white/5">
+                      <td className="px-4 py-3 whitespace-nowrap">{formatDate(entry.date)}</td>
+                      <td className="px-4 py-3">{entry.type}</td>
+                      <td className="px-4 py-3">
+                        {entry.bill ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPreviewBill({ type: entry.bill!.type, id: entry.bill!.id })
+                            }
+                            className="underline underline-offset-4 hover:text-black dark:hover:text-white"
+                          >
+                            {entry.ref}
+                          </button>
+                        ) : (
+                          entry.ref
+                        )}
+                        {entry.note && (
+                          <span className="block text-xs text-black/50 dark:text-white/50">
+                            {entry.note}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap text-[#0ca30c]">
+                        {entry.amountCents > 0 ? formatCents(entry.amountCents) : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap text-[#d03b3b]">
+                        {entry.amountCents < 0 ? formatCents(-entry.amountCents) : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium whitespace-nowrap">
+                        {formatCents(balances[index])}
+                      </td>
+                    </tr>,
+                    // Clicking the reference already previews a bill's items on
+                    // screen, so these stay hidden there — but window.print()
+                    // only prints what's in the DOM, so they need to render
+                    // (print:table-row) to make a printed statement show what
+                    // was actually billed, not just the reference.
+                    ...(entry.items ?? []).map((item, i) => (
+                      <tr
+                        key={`${index}-item-${i}`}
+                        className="hidden border-t border-black/5 text-xs text-black/60 print:table-row dark:border-white/5 dark:text-white/60"
+                      >
+                        <td className="px-4 py-1" />
+                        <td className="px-4 py-1" />
+                        <td className="px-4 py-1" colSpan={4}>
+                          {item.name} — {item.quantity} × {formatCents(item.priceCents)}
+                        </td>
+                      </tr>
+                    )),
+                  ];
               })}
               {ledger.length === 0 && (
                 <tr>
