@@ -23,6 +23,7 @@ const GROUPS = [
       { href: "/reports/expenses", label: "Expenses", icon: Receipt },
       { href: "/reports/bill-wise-profit", label: "Bill Wise Profit", icon: BadgePercent },
       { href: "/reports/profit-loss", label: "Profit & Loss", icon: TrendingUp },
+      { href: "/reports/balance-sheet", label: "Balance Sheet", icon: Landmark },
     ],
   },
   {
@@ -32,7 +33,6 @@ const GROUPS = [
   {
     title: "Coming soon",
     links: [
-      { href: "/reports/balance-sheet", label: "Balance Sheet", icon: Landmark },
       { href: "/reports/cash-flow", label: "Cash Flow", icon: Wallet },
       { href: "/reports/gst", label: "GST Returns", icon: FileSpreadsheet },
     ],

@@ -198,3 +198,20 @@ export const forwardSaleSchema = z.object({
   notes: z.string().trim().optional().nullable(),
   closed: z.boolean().optional(),
 });
+
+export const partnerSchema = z.object({
+  name: z.string().trim().min(1, "Partner name is required"),
+  phone: z.string().trim().optional().nullable(),
+  notes: z.string().trim().optional().nullable(),
+  active: z.boolean().optional(),
+});
+
+// A partner adding capital to, or withdrawing it from, the business.
+export const capitalEntrySchema = z.object({
+  partnerId: z.string().min(1, "Choose the partner"),
+  type: z.enum(["CONTRIBUTION", "WITHDRAWAL"]),
+  date: z.string().min(1, "Date is required"),
+  amount: z.number().positive("Amount must be greater than 0"),
+  paymentMethod: accountIdSchema.default("CASH"),
+  notes: z.string().trim().optional().nullable(),
+});
