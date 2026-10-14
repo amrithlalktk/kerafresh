@@ -10,26 +10,64 @@ import { useDefaultDateRange } from "@/lib/reportHelpers";
 import type { Item, Sale } from "@/lib/types";
 import EmailPdfButton from "@/components/EmailPdfButton";
 
+type ProfitRowItem = {
+  name: string;
+  quantity: number;
+  priceCents: number;
+  // This line's own revenue/cost, precomputed the same way as the bill-level
+  // totals below (sum of lineTotalCents / cost-per-unit × quantity) — stored
+  // directly rather than re-derived from quantity × priceCents, so the two
+  // never drift apart over rounding.
+  lineRevenueCents: number;
+  lineCostCents: number;
+};
+
 type ProfitRow = {
   billNumber: number;
   date: string;
   partyName: string;
+  items: ProfitRowItem[];
   revenueCents: number;
   costCents: number;
   profitCents: number;
 };
 
-const HEADER = ["Bill #", "Date", "Party", "Revenue", "Cost", "Profit", "Margin %"];
+const HEADER = [
+  "Bill #",
+  "Date",
+  "Party",
+  "Item",
+  "Weight",
+  "Price",
+  "Item Revenue",
+  "Item Cost",
+  "Item Profit",
+  "Revenue",
+  "Cost",
+  "Profit",
+  "Margin %",
+];
+// One row per item line — the bill-level Revenue/Cost/Profit/Margin % only
+// appear on the bill's first item row so summing those columns in a
+// spreadsheet doesn't multiply a multi-item bill's totals.
 function csvRows(rows: ProfitRow[]) {
-  return rows.map((r) => [
-    formatBillNumber(r.billNumber),
-    formatDate(r.date),
-    r.partyName,
-    (r.revenueCents / 100).toFixed(2),
-    (r.costCents / 100).toFixed(2),
-    (r.profitCents / 100).toFixed(2),
-    r.revenueCents > 0 ? ((r.profitCents / r.revenueCents) * 100).toFixed(1) : "0.0",
-  ]);
+  return rows.flatMap((r) =>
+    r.items.map((item, i) => [
+      i === 0 ? formatBillNumber(r.billNumber) : "",
+      i === 0 ? formatDate(r.date) : "",
+      i === 0 ? r.partyName : "",
+      item.name,
+      String(item.quantity),
+      (item.priceCents / 100).toFixed(2),
+      (item.lineRevenueCents / 100).toFixed(2),
+      (item.lineCostCents / 100).toFixed(2),
+      ((item.lineRevenueCents - item.lineCostCents) / 100).toFixed(2),
+      i === 0 ? (r.revenueCents / 100).toFixed(2) : "",
+      i === 0 ? (r.costCents / 100).toFixed(2) : "",
+      i === 0 ? (r.profitCents / 100).toFixed(2) : "",
+      i === 0 ? (r.revenueCents > 0 ? ((r.profitCents / r.revenueCents) * 100).toFixed(1) : "0.0") : "",
+    ])
+  );
 }
 
 export default function BillWiseProfitPage() {
@@ -58,15 +96,20 @@ export default function BillWiseProfitPage() {
 
     const computed: ProfitRow[] = sales
       .map((s) => {
-        const revenueCents = s.items.reduce((sum, l) => sum + l.lineTotalCents, 0);
-        const costCents = s.items.reduce(
-          (sum, l) => sum + (costByItemId.get(l.itemId) ?? 0) * l.quantity,
-          0
-        );
+        const items: ProfitRowItem[] = s.items.map((l) => ({
+          name: l.item.name,
+          quantity: l.quantity,
+          priceCents: l.priceCents,
+          lineRevenueCents: l.lineTotalCents,
+          lineCostCents: (costByItemId.get(l.itemId) ?? 0) * l.quantity,
+        }));
+        const revenueCents = items.reduce((sum, l) => sum + l.lineRevenueCents, 0);
+        const costCents = items.reduce((sum, l) => sum + l.lineCostCents, 0);
         return {
           billNumber: s.billNumber,
           date: s.date,
           partyName: s.party?.name ?? "Cash sale",
+          items,
           revenueCents,
           costCents,
           profitCents: revenueCents - costCents,

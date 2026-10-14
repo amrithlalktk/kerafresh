@@ -96,25 +96,36 @@ export const TX_HEADER = [
   "Item",
   "Weight",
   "Price",
+  "Item Amount",
   "Total",
   "Paid",
   "Balance",
   "Remarks",
 ];
+// One row per item line (not per bill) — a bill with 3 items becomes 3 rows,
+// each repeating the bill's own reference/party/date so the item they
+// belong to is unambiguous. The bill-level Total/Paid/Balance/Remarks only
+// appear on that bill's first item row (blank after) so summing the column
+// in a spreadsheet doesn't double-count a multi-item bill. A bill with no
+// items (shouldn't normally happen) still gets one row so it isn't dropped.
 export function txCsvRows(rows: TxRow[]) {
-  return rows.map((r) => [
-    r.type,
-    formatBillNumber(r.billNumber),
-    formatDate(r.date),
-    r.partyName,
-    r.items.map((i) => i.name).join("; "),
-    r.items.map((i) => i.quantity).join("; "),
-    r.items.map((i) => (i.priceCents / 100).toFixed(2)).join("; "),
-    (r.totalCents / 100).toFixed(2),
-    (r.paidCents / 100).toFixed(2),
-    ((r.totalCents - r.paidCents) / 100).toFixed(2),
-    r.remarks,
-  ]);
+  return rows.flatMap((r) => {
+    const items = r.items.length > 0 ? r.items : [{ name: "", quantity: 0, priceCents: 0 }];
+    return items.map((item, i) => [
+      i === 0 ? r.type : "",
+      i === 0 ? formatBillNumber(r.billNumber) : "",
+      i === 0 ? formatDate(r.date) : "",
+      i === 0 ? r.partyName : "",
+      item.name,
+      item.name ? String(item.quantity) : "",
+      item.name ? (item.priceCents / 100).toFixed(2) : "",
+      item.name ? ((item.quantity * item.priceCents) / 100).toFixed(2) : "",
+      i === 0 ? (r.totalCents / 100).toFixed(2) : "",
+      i === 0 ? (r.paidCents / 100).toFixed(2) : "",
+      i === 0 ? ((r.totalCents - r.paidCents) / 100).toFixed(2) : "",
+      i === 0 ? r.remarks : "",
+    ]);
+  });
 }
 
 export const TX_TAX_HEADER = ["Type", "Bill #", "Date", "Party", "Item", "Qty", "Tax %", "Tax Amount"];

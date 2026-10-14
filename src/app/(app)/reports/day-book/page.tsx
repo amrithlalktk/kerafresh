@@ -37,20 +37,31 @@ const HEADER = [
   "Item",
   "Weight",
   "Price",
+  "Item Amount",
   "Amount",
   "Remarks",
 ];
+// One row per item line for Sale/Purchase (an Expense row has no items, so
+// it stays a single row with `detail` in the Item column). The bill-level
+// Amount/Remarks only appear on the first item row so a multi-item bill
+// doesn't make its own total look like it repeats per item when summed.
 function csvRows(rows: DayRow[]) {
-  return rows.map((r) => [
-    r.type,
-    r.ref,
-    r.partyOrCategory,
-    r.items.length > 0 ? r.items.map((i) => i.name).join("; ") : r.detail,
-    r.items.map((i) => i.quantity).join("; "),
-    r.items.map((i) => (i.priceCents / 100).toFixed(2)).join("; "),
-    (r.amountCents / 100).toFixed(2),
-    r.remarks,
-  ]);
+  return rows.flatMap((r) => {
+    if (r.items.length === 0) {
+      return [[r.type, r.ref, r.partyOrCategory, r.detail, "", "", "", (r.amountCents / 100).toFixed(2), r.remarks]];
+    }
+    return r.items.map((item, i) => [
+      i === 0 ? r.type : "",
+      i === 0 ? r.ref : "",
+      i === 0 ? r.partyOrCategory : "",
+      item.name,
+      String(item.quantity),
+      (item.priceCents / 100).toFixed(2),
+      ((item.quantity * item.priceCents) / 100).toFixed(2),
+      i === 0 ? (r.amountCents / 100).toFixed(2) : "",
+      i === 0 ? r.remarks : "",
+    ]);
+  });
 }
 
 export default function DayBookPage() {
