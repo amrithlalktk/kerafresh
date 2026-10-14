@@ -109,7 +109,7 @@ export default function AboutPage() {
       <Card>
         <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-3">
-            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1baf7a]/10 text-[#1baf7a]">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand">
               <Monitor size={16} strokeWidth={2} />
             </div>
             <div>
@@ -123,7 +123,7 @@ export default function AboutPage() {
           </div>
           <a
             href="https://github.com/amrithlalktk/kerafresh/releases/latest/download/Kerafresh-Setup.exe"
-            className="shrink-0 rounded-lg bg-[#1baf7a] px-4 py-2 text-sm font-medium text-white hover:bg-[#1baf7a]/90"
+            className="shrink-0 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand/90"
           >
             Download for Windows
           </a>
@@ -136,7 +136,7 @@ export default function AboutPage() {
             const Icon = f.icon;
             return (
               <div key={f.title} className="flex gap-3">
-                <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1baf7a]/10 text-[#1baf7a]">
+                <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand">
                   <Icon size={16} strokeWidth={2} />
                 </div>
                 <div>

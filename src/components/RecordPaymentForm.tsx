@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { formatBillNumber, formatCents } from "@/lib/money";
-import { PAYMENT_METHODS, paymentMethodLabel } from "@/lib/types";
 import type {
   CombinedPayment,
   Party,
@@ -12,6 +11,8 @@ import type {
   Purchase,
   Sale,
 } from "@/lib/types";
+import AccountOptions from "@/components/AccountOptions";
+import { useAccounts } from "@/lib/useAccounts";
 
 export type PayType = "SALE" | "PURCHASE" | "ADVANCE";
 
@@ -52,7 +53,8 @@ export default function RecordPaymentForm({
   onCancelEdit?: () => void;
   onSaved: () => void;
 }) {
-  const [payType, setPayType] = useState<PayType>("SALE");
+
+  const accounts = useAccounts();  const [payType, setPayType] = useState<PayType>("SALE");
   const [billQuery, setBillQuery] = useState("");
   const [billResults, setBillResults] = useState<(Sale | Purchase)[]>([]);
   const [selectedBill, setSelectedBill] = useState<Sale | Purchase | null>(null);
@@ -389,11 +391,7 @@ export default function RecordPaymentForm({
             onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
             className={inputClass}
           >
-            {PAYMENT_METHODS.map((m) => (
-              <option key={m} value={m}>
-                {paymentMethodLabel(m)}
-              </option>
-            ))}
+            <AccountOptions accounts={accounts} current={paymentMethod} />
           </select>
         </div>
         <div className="flex flex-1 flex-col gap-1">

@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { formatBillNumber, formatCents } from "@/lib/money";
 import { formatDate } from "@/lib/date";
-import { isAdminRole, paymentMethodLabel, type CombinedPayment, type Party } from "@/lib/types";
+import { accountName, isAdminRole, type CombinedPayment, type Party } from "@/lib/types";
 import { useViewerRole } from "@/lib/useViewerRole";
 import Card from "@/components/Card";
 import RecordPaymentForm, { type PayType } from "@/components/RecordPaymentForm";
 import BillPreviewModal, { type PreviewBillType } from "@/components/BillPreviewModal";
+import { useAccounts } from "@/lib/useAccounts";
 
 const inputClass =
   "rounded-md border border-black/15 px-2 py-1.5 text-sm dark:border-white/15 dark:bg-transparent";
@@ -26,6 +27,7 @@ function isCredit(p: CombinedPayment) {
 }
 
 export default function PaymentsPage() {
+  const accounts = useAccounts();
   const viewerRole = useViewerRole();
   const canDelete = viewerRole !== null && isAdminRole(viewerRole);
 
@@ -191,7 +193,7 @@ export default function PaymentsPage() {
                     <td className="px-4 py-2 text-right whitespace-nowrap text-[#0ca30c]">
                       {credit ? formatCents(p.amountCents) : "—"}
                     </td>
-                    <td className="px-4 py-2">{paymentMethodLabel(p.paymentMethod)}</td>
+                    <td className="px-4 py-2">{accountName(accounts, p.paymentMethod)}</td>
                     <td className="px-4 py-2 text-black/60 dark:text-white/60">{p.notes ?? ""}</td>
                     <td className="px-4 py-2 text-right whitespace-nowrap">
                       {p.kind === "ADVANCE" && (

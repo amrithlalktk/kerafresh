@@ -3,7 +3,6 @@ import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatBillNumber, formatCents } from "@/lib/money";
 import { formatBillDate } from "@/lib/date";
-import { paymentMethodLabel } from "@/lib/types";
 import { COMPANY } from "@/lib/company";
 import { displayUnit } from "@/lib/units";
 import PrintButton from "@/components/PrintButton";
@@ -21,6 +20,7 @@ export default async function PrintSalePage({
   const sale = await db.sale.findUnique({
     where: { id },
     include: {
+      account: { select: { name: true } },
       party: true,
       items: { include: { item: { select: { name: true, unit: true } } } },
       charges: true,
@@ -115,7 +115,7 @@ export default async function PrintSalePage({
           <span>{formatCents(sale.totalCents)}</span>
         </div>
         <div className="flex justify-between text-black/60">
-          <span>Paid ({paymentMethodLabel(sale.paymentMethod)})</span>
+          <span>Paid ({sale.account.name})</span>
           <span>{formatCents(sale.paidCents)}</span>
         </div>
         <div className="flex justify-between border-t border-black/10 pt-1 font-semibold">

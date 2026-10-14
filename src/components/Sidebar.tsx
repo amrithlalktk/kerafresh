@@ -17,6 +17,7 @@ import {
   Upload,
   Table2,
   AtSign,
+  Landmark,
   X,
 } from "lucide-react";
 import type { SessionPayload } from "@/lib/auth";
@@ -34,6 +35,7 @@ const LINKS = [
   { href: "/reports", label: "Reports", icon: BarChart2, adminOnly: false },
   { href: "/notes", label: "Notes", icon: Table2, adminOnly: false },
   { href: "/email-contacts", label: "Email Contacts", icon: AtSign, adminOnly: false },
+  { href: "/accounts", label: "Accounts", icon: Landmark, adminOnly: true },
   { href: "/import", label: "Import", icon: Upload, adminOnly: true },
   { href: "/categories", label: "Categories", icon: Tags, adminOnly: true },
   { href: "/users", label: "Users", icon: UserCog, adminOnly: true },
@@ -88,7 +90,7 @@ export default function Sidebar({
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 flex h-screen w-64 shrink-0 flex-col border-r border-black/10 bg-[#f2f0eb]/95 text-black/70 shadow-[8px_0_30px_rgba(0,0,0,0.06)] backdrop-blur-xl transition-transform duration-200 ease-in-out print:hidden md:w-56 md:translate-x-0 md:bg-[#f2f0eb]/70 ${
+        className={`fixed inset-y-0 left-0 z-30 flex h-screen w-64 shrink-0 flex-col border-r border-black/10 bg-canvas/95 text-black/70 shadow-[8px_0_30px_rgba(0,0,0,0.06)] backdrop-blur-xl transition-transform duration-200 ease-in-out print:hidden md:w-56 md:translate-x-0 md:bg-canvas/70 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -113,7 +115,7 @@ export default function Sidebar({
                 href={link.href}
                 className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm backdrop-blur-sm transition-colors ${
                   active
-                    ? "bg-[#1baf7a]/85 font-medium text-white"
+                    ? "bg-brand/85 font-medium text-white"
                     : "hover:bg-black/5 hover:text-black"
                 }`}
               >

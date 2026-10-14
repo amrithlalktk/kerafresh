@@ -44,7 +44,7 @@ export default function TopBar({
       <div className="flex items-center gap-1.5 sm:gap-2">
         <button
           onClick={() => router.push("/sale?new=1")}
-          className="flex items-center gap-1.5 rounded-full bg-[#1baf7a] px-3 py-2 text-sm font-medium text-white hover:opacity-90 sm:px-4"
+          className="flex items-center gap-1.5 rounded-full bg-brand px-3 py-2 text-sm font-medium text-white hover:opacity-90 sm:px-4"
         >
           <Plus size={16} /> <span className="hidden sm:inline">Add Sale</span>
         </button>

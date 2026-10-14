@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { formatBillNumber } from "@/lib/money";
 import { formatDate } from "@/lib/date";
-import type { Expense, PaymentLine } from "@/lib/types";
+import { accountName, type Account, type Expense, type PaymentLine } from "@/lib/types";
 
 // Joins whatever explanatory notes a bill's payments carry (e.g. the
 // "X paid — Y applied as advance to next bill" / "From X overpayment on
@@ -76,13 +76,13 @@ export const EXPENSE_HEADER = [
   "Recorded By",
   "Notes",
 ];
-export function expenseRows(expenses: Expense[]) {
+export function expenseRows(expenses: Expense[], accounts: Pick<Account, "id" | "name">[]) {
   return expenses.map((e) => [
     formatDate(e.date),
     e.description,
     e.category.name,
     (e.amountCents / 100).toFixed(2),
-    e.paymentMethod ?? "",
+    e.paymentMethod ? accountName(accounts, e.paymentMethod) : "",
     e.recordedBy.name,
     e.notes ?? "",
   ]);

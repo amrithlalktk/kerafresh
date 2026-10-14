@@ -29,6 +29,7 @@ export async function POST(
   const purchase = await db.purchase.findUnique({
     where: { id },
     include: {
+      account: { select: { name: true } },
       party: true,
       items: { include: { item: { select: { name: true, unit: true } } } },
       charges: true,

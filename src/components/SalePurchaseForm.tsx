@@ -5,8 +5,6 @@ import { Trash2 } from "lucide-react";
 import { formatCents } from "@/lib/money";
 import {
   FFA_GRADES,
-  PAYMENT_METHODS,
-  paymentMethodLabel,
   type ChargeType,
   type Item,
   type Party,
@@ -14,6 +12,8 @@ import {
   type Purchase,
   type Sale,
 } from "@/lib/types";
+import AccountOptions from "@/components/AccountOptions";
+import { useAccounts } from "@/lib/useAccounts";
 
 const inputClass =
   "rounded-md border border-black/15 px-3 py-2 text-sm dark:border-white/15 dark:bg-transparent";
@@ -62,6 +62,7 @@ export default function SalePurchaseForm({
 }) {
   const apiBase = mode === "SALE" ? "/api/sales" : "/api/purchases";
 
+  const accounts = useAccounts();
   const [date, setDate] = useState(initial ? initial.date.slice(0, 10) : todayStr());
   // Sales are numbered by hand (matches a physical bill book) — Purchases
   // keep auto-numbering server-side, so this only matters in SALE mode.
@@ -514,11 +515,7 @@ export default function SalePurchaseForm({
               onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
               className={inputClass}
             >
-              {PAYMENT_METHODS.map((m) => (
-                <option key={m} value={m}>
-                  {paymentMethodLabel(m)}
-                </option>
-              ))}
+              <AccountOptions accounts={accounts} current={paymentMethod} />
             </select>
           </div>
         </div>

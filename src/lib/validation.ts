@@ -25,8 +25,27 @@ export const categorySchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
 });
 
-const PAYMENT_METHOD_VALUES = ["CASH", "BANK", "IDBI_BANK", "INDUSIND_BANK", "GPAY"] as const;
-const paymentMethodSchema = z.enum(PAYMENT_METHOD_VALUES).optional().nullable();
+// `paymentMethod` is an Account id (see Account in schema.prisma); the
+// foreign key rejects anything that isn't a real account.
+const accountIdSchema = z.string().trim().min(1, "Choose an account");
+const paymentMethodSchema = accountIdSchema.optional().nullable();
+
+export const accountSchema = z.object({
+  name: z.string().trim().min(1, "Name is required"),
+  type: z.enum(["CASH", "BANK"]).default("BANK"),
+  openingBalance: z.number().default(0),
+  active: z.boolean().optional(),
+});
+
+// Edits send only what changed — no defaults, so an omitted type can't
+// silently turn into "BANK".
+export const accountPatchSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").optional(),
+  type: z.enum(["CASH", "BANK"]).optional(),
+  openingBalance: z.number().optional(),
+  active: z.boolean().optional(),
+});
+
 
 export const expenseSchema = z.object({
   date: z.string().min(1, "Date is required"),
@@ -93,7 +112,7 @@ const billSchemaBase = z.object({
   // How much of `paid` is settled from the party's existing advance credit
   // (PartyPayment) instead of fresh cash — see POST /api/sales.
   advanceAppliedCents: z.number().int().nonnegative().default(0),
-  paymentMethod: z.enum(PAYMENT_METHOD_VALUES).default("CASH"),
+  paymentMethod: accountIdSchema.default("CASH"),
   notes: z.string().trim().optional().nullable(),
 });
 
@@ -109,7 +128,7 @@ export const purchaseSchema = billSchemaBase;
 export const paymentSchema = z.object({
   date: z.string().min(1, "Date is required"),
   amount: z.number().positive("Amount must be greater than 0"),
-  paymentMethod: z.enum(PAYMENT_METHOD_VALUES).default("CASH"),
+  paymentMethod: accountIdSchema.default("CASH"),
   notes: z.string().trim().optional().nullable(),
 });
 
@@ -118,7 +137,7 @@ export const partyPaymentSchema = z.object({
   date: z.string().min(1, "Date is required"),
   direction: z.enum(["RECEIVED", "PAID"]),
   amount: z.number().positive("Amount must be greater than 0"),
-  paymentMethod: z.enum(PAYMENT_METHOD_VALUES).default("CASH"),
+  paymentMethod: accountIdSchema.default("CASH"),
   notes: z.string().trim().optional().nullable(),
 });
 
@@ -139,3 +158,17 @@ export const noteSheetPatchSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(60, "Name is too long").optional(),
   data: noteSheetDataSchema.optional(),
 });
+
+// Moving money between own accounts (withdraw / deposit / transfer).
+export const accountTransferSchema = z
+  .object({
+    date: z.string().min(1, "Date is required"),
+    fromAccountId: z.string().min(1, "Choose the account the money leaves"),
+    toAccountId: z.string().min(1, "Choose the account the money goes to"),
+    amount: z.number().positive("Amount must be greater than 0"),
+    notes: z.string().trim().optional().nullable(),
+  })
+  .refine((d) => d.fromAccountId !== d.toAccountId, {
+    message: "Choose two different accounts",
+    path: ["toAccountId"],
+  });

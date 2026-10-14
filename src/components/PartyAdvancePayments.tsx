@@ -5,12 +5,12 @@ import { Pencil, Trash2 } from "lucide-react";
 import { formatCents } from "@/lib/money";
 import { formatDate } from "@/lib/date";
 import {
-  PAYMENT_METHODS,
-  paymentMethodLabel,
-  type PartyPayment,
+  accountName, type PartyPayment,
   type PartyPaymentDirection,
   type PaymentMethod,
 } from "@/lib/types";
+import AccountOptions from "@/components/AccountOptions";
+import { useAccounts } from "@/lib/useAccounts";
 
 const inputClass =
   "rounded-md border border-black/15 px-2 py-1.5 text-sm dark:border-white/15 dark:bg-transparent";
@@ -36,7 +36,8 @@ export default function PartyAdvancePayments({
   onChange: () => void;
   canDelete: boolean;
 }) {
-  const [payments, setPayments] = useState<PartyPayment[]>([]);
+
+  const accounts = useAccounts();  const [payments, setPayments] = useState<PartyPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState(todayStr());
   const [direction, setDirection] = useState<PartyPaymentDirection>("RECEIVED");
@@ -166,7 +167,7 @@ export default function PartyAdvancePayments({
                 {formatCents(p.amountCents)} {p.direction === "RECEIVED" ? "received" : "paid"} on{" "}
                 {formatDate(p.date)}
                 <span className="ml-2 text-xs text-black/50 dark:text-white/50">
-                  {paymentMethodLabel(p.paymentMethod)}
+                  {accountName(accounts, p.paymentMethod)}
                 </span>
                 {p.notes && (
                   <span className="block text-xs text-black/50 dark:text-white/50">
@@ -242,11 +243,7 @@ export default function PartyAdvancePayments({
             onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
             className={inputClass}
           >
-            {PAYMENT_METHODS.map((m) => (
-              <option key={m} value={m}>
-                {paymentMethodLabel(m)}
-              </option>
-            ))}
+            <AccountOptions accounts={accounts} current={paymentMethod} />
           </select>
         </div>
         <div className="flex flex-col gap-1">

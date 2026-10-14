@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ShoppingCart, Receipt, Truck } from "lucide-react";
+import { ShoppingCart, Receipt, Truck, Banknote, Landmark } from "lucide-react";
 import { db } from "@/lib/db";
 import { formatCents } from "@/lib/money";
 import {
@@ -8,6 +8,7 @@ import {
   getItemAverageCostMap,
   getOldestUnpaidSaleDateByParty,
   getOldestUnpaidPurchaseDateByParty,
+  getAccountBalances,
 } from "@/lib/balances";
 import Card from "@/components/Card";
 import StatCard from "@/components/StatCard";
@@ -98,12 +99,7 @@ export default async function DashboardPage() {
     items,
     stockDelta,
     avgCost,
-    saleCashSum,
-    salebankSum,
-    purchaseCashSum,
-    purchaseBankSum,
-    expenseCashSum,
-    expenseBankSum,
+    accountBalances,
   ] = await Promise.all([
     db.sale.findMany({ where: { date: { gte: monthStart, lte: todayEnd } } }),
     db.transaction.findMany({
@@ -132,24 +128,7 @@ export default async function DashboardPage() {
     db.item.findMany(),
     getItemStockMap(),
     getItemAverageCostMap(),
-    db.salePayment.aggregate({ where: { paymentMethod: "CASH" }, _sum: { amountCents: true } }),
-    db.salePayment.aggregate({ where: { paymentMethod: { not: "CASH" } }, _sum: { amountCents: true } }),
-    db.purchasePayment.aggregate({
-      where: { paymentMethod: "CASH" },
-      _sum: { amountCents: true },
-    }),
-    db.purchasePayment.aggregate({
-      where: { paymentMethod: { not: "CASH" } },
-      _sum: { amountCents: true },
-    }),
-    db.transaction.aggregate({
-      where: { type: "EXPENSE", paymentMethod: "CASH" },
-      _sum: { amountCents: true },
-    }),
-    db.transaction.aggregate({
-      where: { type: "EXPENSE", paymentMethod: { not: "CASH" } },
-      _sum: { amountCents: true },
-    }),
+    getAccountBalances(),
   ]);
 
   const saleTotal = sumCents(salesThisMonth, "totalCents");
@@ -163,14 +142,9 @@ export default async function DashboardPage() {
 
   const collectionRatio = saleTotal > 0 ? salePaidTotal / saleTotal : 1;
 
-  const cashInHand =
-    (saleCashSum._sum.amountCents ?? 0) -
-    (purchaseCashSum._sum.amountCents ?? 0) -
-    (expenseCashSum._sum.amountCents ?? 0);
-  const bankTotal =
-    (salebankSum._sum.amountCents ?? 0) -
-    (purchaseBankSum._sum.amountCents ?? 0) -
-    (expenseBankSum._sum.amountCents ?? 0);
+  // Hidden accounts still hold money, so keep any with a balance on show.
+  const visibleAccounts = accountBalances.filter((a) => a.active || a.balanceCents !== 0);
+  const totalAvailableCents = visibleAccounts.reduce((sum, a) => sum + a.balanceCents, 0);
 
   const partyBalances = parties.map((p) => {
     const balanceCents = p.openingBalanceCents + (dueByParty.get(p.id) ?? 0);
@@ -481,15 +455,34 @@ export default async function DashboardPage() {
             </div>
           </Card>
 
-          <Card title="Cash & Bank">
+          <Card
+            title="Cash & Bank"
+            action={
+              <Link href="/accounts" className="text-sm underline underline-offset-4">
+                Accounts
+              </Link>
+            }
+          >
             <div className="flex flex-col gap-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-black/60 dark:text-white/60">Cash in hand</span>
-                <span className="font-medium">{formatCents(cashInHand)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-black/60 dark:text-white/60">Bank</span>
-                <span className="font-medium">{formatCents(bankTotal)}</span>
+              {visibleAccounts.map((a) => {
+                const Icon = a.type === "CASH" ? Banknote : Landmark;
+                return (
+                  <div key={a.id} className="flex items-center justify-between gap-2">
+                    <span className="flex min-w-0 items-center gap-2 text-black/60 dark:text-white/60">
+                      <Icon size={15} className="shrink-0 text-brand" />
+                      <span className="truncate">{a.name}</span>
+                    </span>
+                    <span
+                      className={`shrink-0 font-medium ${a.balanceCents < 0 ? "text-[#d03b3b]" : ""}`}
+                    >
+                      {formatCents(a.balanceCents)}
+                    </span>
+                  </div>
+                );
+              })}
+              <div className="flex justify-between border-t border-black/10 pt-2 font-semibold dark:border-white/10">
+                <span>Total available</span>
+                <span>{formatCents(totalAvailableCents)}</span>
               </div>
             </div>
           </Card>

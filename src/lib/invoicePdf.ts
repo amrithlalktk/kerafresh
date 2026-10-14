@@ -3,7 +3,7 @@ import autoTable from "jspdf-autotable";
 import { COMPANY } from "@/lib/company";
 import { formatBillNumber, formatCents } from "@/lib/money";
 import { formatBillDate } from "@/lib/date";
-import { paymentMethodLabel, type PaymentMethod } from "@/lib/types";
+import type { PaymentMethod } from "@/lib/types";
 import { displayUnit } from "@/lib/units";
 
 // Mirrors src/app/print/sale/[id]/page.tsx and .../purchase/[id]/page.tsx —
@@ -15,6 +15,7 @@ type InvoiceLike = {
   totalCents: number;
   paidCents: number;
   paymentMethod: PaymentMethod;
+  account: { name: string };
   notes: string | null;
   party: {
     name: string;
@@ -121,7 +122,7 @@ export function buildInvoicePdfBuffer(
   doc.text(formatCents(bill.totalCents), totalsX, y, { align: "right" });
   y += 5.5;
   doc.setFontSize(9);
-  doc.text(`Paid (${paymentMethodLabel(bill.paymentMethod)})`, totalsX - 40, y);
+  doc.text(`Paid (${bill.account.name})`, totalsX - 40, y);
   doc.text(formatCents(bill.paidCents), totalsX, y, { align: "right" });
   y += 5.5;
   doc.setFontSize(10);

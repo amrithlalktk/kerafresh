@@ -9,8 +9,10 @@ import SearchInput from "@/components/SearchInput";
 import CategoryBreakdownChart from "@/components/CategoryBreakdownChart";
 import { downloadReportCsv, downloadReportPdf } from "@/lib/reportExport";
 import { EXPENSE_HEADER, expenseRows, useDefaultDateRange } from "@/lib/reportHelpers";
-import { PAYMENT_METHODS, paymentMethodLabel, type Category, type Expense, type PaymentMethod } from "@/lib/types";
+import { accountName, type Category, type Expense, type PaymentMethod } from "@/lib/types";
 import EmailPdfButton from "@/components/EmailPdfButton";
+import AccountOptions from "@/components/AccountOptions";
+import { useAccounts } from "@/lib/useAccounts";
 
 type ReportData = {
   totalExpenseCents: number;
@@ -20,7 +22,8 @@ type ReportData = {
 
 export default function ExpenseReportPage() {
   const { from, to, setFrom, setTo, ready } = useDefaultDateRange();
-  const [categoryId, setCategoryId] = useState("");
+
+  const accounts = useAccounts();  const [categoryId, setCategoryId] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("");
   const [search, setSearch] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
@@ -59,7 +62,7 @@ export default function ExpenseReportPage() {
       filename: `expenses_${from}_to_${to}.csv`,
       title: `Expense report (${from} to ${to})`,
       header: EXPENSE_HEADER,
-      rows: expenseRows(data.expenses),
+      rows: expenseRows(data.expenses, accounts),
       generatedBy,
     });
   }
@@ -70,7 +73,7 @@ export default function ExpenseReportPage() {
       filename: `expenses_${from}_to_${to}.pdf`,
       title: `Expense report (${from} to ${to})`,
       header: EXPENSE_HEADER,
-      rows: expenseRows(data.expenses),
+      rows: expenseRows(data.expenses, accounts),
       generatedBy,
     });
   }
@@ -129,11 +132,7 @@ export default function ExpenseReportPage() {
               className="bg-transparent py-1 text-sm focus:outline-none"
             >
               <option value="">All</option>
-              {PAYMENT_METHODS.map((m) => (
-                <option key={m} value={m}>
-                  {paymentMethodLabel(m)}
-                </option>
-              ))}
+              <AccountOptions accounts={accounts} current={paymentMethod} />
             </select>
           </div>
           <div className="flex flex-col gap-1">
@@ -174,7 +173,7 @@ export default function ExpenseReportPage() {
                   filename: `expenses_${from}_to_${to}.pdf`,
                   title: `Expense report (${from} to ${to})`,
                   header: EXPENSE_HEADER,
-                  rows: expenseRows(data.expenses),
+                  rows: expenseRows(data.expenses, accounts),
                 }
               }
               disabled={!data || data.expenses.length === 0}
@@ -228,7 +227,7 @@ export default function ExpenseReportPage() {
                       <td className="px-4 py-3 whitespace-nowrap">{formatDate(e.date)}</td>
                       <td className="px-4 py-3">{e.description}</td>
                       <td className="px-4 py-3">{e.category.name}</td>
-                      <td className="px-4 py-3">{e.paymentMethod ? paymentMethodLabel(e.paymentMethod) : "—"}</td>
+                      <td className="px-4 py-3">{e.paymentMethod ? accountName(accounts, e.paymentMethod) : "—"}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap text-[#d03b3b]">
                         -{formatCents(e.amountCents)}
                       </td>

@@ -1,6 +1,7 @@
 export type TransactionType = "INCOME" | "EXPENSE";
 export type PartyType = "CUSTOMER" | "SUPPLIER" | "BOTH";
-export type PaymentMethod = "CASH" | "BANK" | "IDBI_BANK" | "INDUSIND_BANK" | "GPAY";
+// An Account id — see CASH_ACCOUNT_ID / Account below.
+export type PaymentMethod = string;
 export type Role = "SUPER_ADMIN" | "ADMIN" | "STAFF";
 
 // Super Admin has every Admin permission everywhere in the app — the only
@@ -11,38 +12,43 @@ export function isAdminRole(role: Role) {
   return role === "ADMIN" || role === "SUPER_ADMIN";
 }
 
-const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
-  CASH: "Cash",
-  BANK: "Bank",
-  IDBI_BANK: "IDBI Bank",
-  INDUSIND_BANK: "IndusInd Bank",
-  GPAY: "GPay",
+// Every payment/expense records which Account the money went through — the
+// `paymentMethod` field holds that Account's id. "CASH" is the built-in cash
+// account; bank accounts are added on the Accounts page.
+export const CASH_ACCOUNT_ID = "CASH";
+
+export type AccountType = "CASH" | "BANK";
+
+export type Account = {
+  id: string;
+  name: string;
+  type: AccountType;
+  openingBalanceCents: number;
+  active: boolean;
+  // Present on GET /api/accounts: opening balance + money in − money out.
+  balanceCents?: number;
+  inCents?: number;
+  outCents?: number;
 };
 
-export function paymentMethodLabel(method: PaymentMethod) {
-  return PAYMENT_METHOD_LABELS[method];
+export function accountName(accounts: Pick<Account, "id" | "name">[], id: string | null | undefined) {
+  if (!id) return "—";
+  return accounts.find((a) => a.id === id)?.name ?? id;
 }
 
-// Single source of truth for every payment-method <select> in the app —
-// map over this instead of hardcoding <option> lists (there were 6+ copies
-// of the same Cash/Bank pair before this).
-export const PAYMENT_METHODS: PaymentMethod[] = [
-  "CASH",
-  "BANK",
-  "IDBI_BANK",
-  "INDUSIND_BANK",
-  "GPAY",
-];
-
 // Best-effort match for free text from an imported spreadsheet column (e.g.
-// "IDBI Bank", "gpay", "Bank") onto a real PaymentMethod — falls back to
-// CASH for anything unrecognized, same as the previous hardcoded behavior.
-export function parsePaymentMethod(raw: string | null | undefined): PaymentMethod {
-  const normalized = (raw ?? "").trim().toUpperCase().replace(/[\s-]+/g, "_");
+// "HDFC Bank", "cash") onto an account by name or id — falls back to Cash
+// for anything unrecognized.
+export function parsePaymentMethod(
+  raw: string | null | undefined,
+  accounts: Pick<Account, "id" | "name">[]
+): PaymentMethod {
+  const normalize = (v: string) => v.trim().toUpperCase().replace(/[\s_-]+/g, "");
+  const wanted = normalize(raw ?? "");
+  if (!wanted) return CASH_ACCOUNT_ID;
   return (
-    PAYMENT_METHODS.find(
-      (m) => m === normalized || PAYMENT_METHOD_LABELS[m].toUpperCase().replace(/[\s-]+/g, "_") === normalized
-    ) ?? "CASH"
+    accounts.find((a) => normalize(a.id) === wanted || normalize(a.name) === wanted)?.id ??
+    CASH_ACCOUNT_ID
   );
 }
 

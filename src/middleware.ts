@@ -4,7 +4,7 @@ import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
 import { isAdminRole } from "@/lib/types";
 
 const PUBLIC_PATHS = ["/login", "/reset-password"];
-const ADMIN_ONLY_PREFIXES = ["/categories", "/users"];
+const ADMIN_ONLY_PREFIXES = ["/categories", "/users", "/accounts"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

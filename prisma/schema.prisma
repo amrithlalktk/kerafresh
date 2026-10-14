@@ -7,7 +7,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
   // Pooled connection string (e.g. Neon's `-pooler` host, or PgBouncer) —
   // used for normal runtime queries from many concurrent serverless
   // functions.
@@ -38,12 +38,9 @@ enum PartyType {
   BOTH
 }
 
-enum PaymentMethod {
+enum AccountType {
   CASH
   BANK
-  IDBI_BANK
-  INDUSIND_BANK
-  GPAY
 }
 
 enum PartyPaymentDirection {
@@ -57,26 +54,27 @@ enum PaymentSource {
 }
 
 model User {
-  id           String        @id @default(cuid())
-  name         String
-  email        String        @unique
+  id                  String               @id @default(cuid())
+  name                String
+  email               String               @unique
   // Null until the user follows their invite-setup link. Admin-created
   // accounts start this way instead of an admin-chosen temporary password.
-  passwordHash String?
-  role         Role          @default(STAFF)
-  active       Boolean       @default(true)
-  createdAt    DateTime      @default(now())
+  passwordHash        String?
+  role                Role                 @default(STAFF)
+  active              Boolean              @default(true)
+  createdAt           DateTime             @default(now())
   // Where this user's one-click "Email PDF" sends bills/reports — separate
   // from their login `email` so it can point at e.g. an accountant's inbox.
   // Comma-separated for multiple recipients (passed straight through as the
   // mail `to` header, which accepts that natively). Null until they set it
   // in Account settings.
-  notifyEmails String?
+  notifyEmails        String?
   transactions        Transaction[]
   sales               Sale[]
   purchases           Purchase[]
   advancePayments     PartyPayment[]
   passwordResetTokens PasswordResetToken[]
+  accountTransfers    AccountTransfer[]
 }
 
 // A one-time link emailed to a user who forgot their password. `tokenHash`
@@ -106,6 +104,49 @@ model Category {
   @@unique([name, type])
 }
 
+// Where money sits: cash in hand or a bank account. Every payment, advance
+// and expense records which account it went through (its `paymentMethod`
+// column holds the Account id), so an account's available balance is
+// openingBalanceCents + money in − money out — see getAccountBalances.
+// "CASH" is the built-in cash account and can't be deleted.
+model Account {
+  id                  String            @id @default(cuid())
+  name                String            @unique
+  type                AccountType       @default(BANK)
+  openingBalanceCents Int               @default(0)
+  // Hidden from payment pickers when false; history and balance remain.
+  active              Boolean           @default(true)
+  createdAt           DateTime          @default(now())
+  transactions        Transaction[]
+  partyPayments       PartyPayment[]
+  sales               Sale[]
+  salePayments        SalePayment[]
+  purchases           Purchase[]
+  purchasePayments    PurchasePayment[]
+  transfersOut        AccountTransfer[] @relation("TransferFrom")
+  transfersIn         AccountTransfer[] @relation("TransferTo")
+}
+
+// Money moved between the business's own accounts — a cash withdrawal
+// from the bank (bank → cash), a deposit (cash → bank), or a transfer
+// between two bank accounts. Lowers one balance and raises the other by
+// the same amount; not income or expense.
+model AccountTransfer {
+  id            String   @id @default(cuid())
+  date          DateTime
+  fromAccount   Account  @relation("TransferFrom", fields: [fromAccountId], references: [id], onDelete: Restrict)
+  fromAccountId String
+  toAccount     Account  @relation("TransferTo", fields: [toAccountId], references: [id], onDelete: Restrict)
+  toAccountId   String
+  amountCents   Int
+  notes         String?
+  recordedBy    User     @relation(fields: [userId], references: [id])
+  userId        String
+  createdAt     DateTime @default(now())
+
+  @@index([date])
+}
+
 model Transaction {
   id            String          @id @default(cuid())
   date          DateTime
@@ -116,7 +157,9 @@ model Transaction {
   categoryId    String
   recordedBy    User            @relation(fields: [userId], references: [id])
   userId        String
-  paymentMethod PaymentMethod?
+  // Account the money left from — see Account.
+  paymentMethod String?
+  account       Account?        @relation(fields: [paymentMethod], references: [id], onDelete: Restrict)
   notes         String?
   createdAt     DateTime        @default(now())
 
@@ -125,16 +168,16 @@ model Transaction {
 }
 
 model Party {
-  id                  String     @id @default(cuid())
+  id                  String         @id @default(cuid())
   name                String
-  type                PartyType  @default(BOTH)
+  type                PartyType      @default(BOTH)
   phone               String?
   email               String?
   address             String?
   gstNumber           String?
   notes               String?
-  openingBalanceCents Int        @default(0)
-  createdAt           DateTime   @default(now())
+  openingBalanceCents Int            @default(0)
+  createdAt           DateTime       @default(now())
   sales               Sale[]
   purchases           Purchase[]
   advancePayments     PartyPayment[]
@@ -145,41 +188,42 @@ model Party {
 // a supplier before delivery. Included in the party's running balance
 // alongside unpaid Sale/Purchase amounts (see getPartyBalanceMap).
 model PartyPayment {
-  id            String                @id @default(cuid())
-  party         Party                 @relation(fields: [partyId], references: [id], onDelete: Cascade)
-  partyId       String
-  date          DateTime
-  direction     PartyPaymentDirection
-  amountCents   Int
-  paymentMethod PaymentMethod         @default(CASH)
-  notes         String?
-  recordedBy    User                  @relation(fields: [userId], references: [id])
-  userId        String
-  createdAt     DateTime              @default(now())
+  id                      String                @id @default(cuid())
+  party                   Party                 @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  partyId                 String
+  date                    DateTime
+  direction               PartyPaymentDirection
+  amountCents             Int
+  paymentMethod           String                @default("CASH")
+  account                 Account               @relation(fields: [paymentMethod], references: [id], onDelete: Restrict)
+  notes                   String?
+  recordedBy              User                  @relation(fields: [userId], references: [id])
+  userId                  String
+  createdAt               DateTime              @default(now())
   // Set when this row is the "excess above what was due" portion of a
   // specific bill payment (see POST .../payments routes), so deleting that
   // bill payment cascades away the advance credit it created instead of
   // leaving it behind as phantom credit still applied to some other bill.
-  sourceSalePayment       SalePayment?     @relation(fields: [sourceSalePaymentId], references: [id], onDelete: Cascade)
-  sourceSalePaymentId     String?          @unique
-  sourcePurchasePayment   PurchasePayment? @relation(fields: [sourcePurchasePaymentId], references: [id], onDelete: Cascade)
-  sourcePurchasePaymentId String?          @unique
+  sourceSalePayment       SalePayment?          @relation(fields: [sourceSalePaymentId], references: [id], onDelete: Cascade)
+  sourceSalePaymentId     String?               @unique
+  sourcePurchasePayment   PurchasePayment?      @relation(fields: [sourcePurchasePaymentId], references: [id], onDelete: Cascade)
+  sourcePurchasePaymentId String?               @unique
 
   @@index([date])
 }
 
 model Item {
-  id                 String         @id @default(cuid())
-  name               String
-  unit               String         @default("pcs")
-  openingStockQty    Int            @default(0)
-  lowStockThreshold  Int?
+  id                String         @id @default(cuid())
+  name              String
+  unit              String         @default("pcs")
+  openingStockQty   Int            @default(0)
+  lowStockThreshold Int?
   // When true, a Sale/Purchase line for this item asks for an FFA grade
   // (FFA-1..FFA-10) — a quality rating, not every item needs one.
-  ffaGraded          Boolean        @default(false)
-  createdAt          DateTime       @default(now())
-  saleItems          SaleItem[]
-  purchaseItems      PurchaseItem[]
+  ffaGraded         Boolean        @default(false)
+  createdAt         DateTime       @default(now())
+  saleItems         SaleItem[]
+  purchaseItems     PurchaseItem[]
 }
 
 // A manageable list of extra charge types (lorry rent, packing charge,
@@ -196,12 +240,12 @@ model ChargeType {
 }
 
 model Sale {
-  id            String         @id @default(cuid())
+  id            String        @id @default(cuid())
   // Sequential invoice number for this sale, assigned by the API as
   // (current max + 1) — its own series, separate from Purchase's.
-  billNumber    Int            @unique @default(0)
+  billNumber    Int           @unique @default(0)
   date          DateTime
-  party         Party?         @relation(fields: [partyId], references: [id])
+  party         Party?        @relation(fields: [partyId], references: [id])
   partyId       String?
   items         SaleItem[]
   charges       SaleCharge[]
@@ -210,12 +254,13 @@ model Sale {
   // Maintained cache = sum of `payments`, kept in sync whenever a payment
   // is added/edited/deleted — never edited directly once the sale exists,
   // so it can't drift from the payment history.
-  paidCents     Int            @default(0)
-  paymentMethod PaymentMethod  @default(CASH)
+  paidCents     Int           @default(0)
+  paymentMethod String        @default("CASH")
+  account       Account       @relation(fields: [paymentMethod], references: [id], onDelete: Restrict)
   notes         String?
-  recordedBy    User           @relation(fields: [userId], references: [id])
+  recordedBy    User          @relation(fields: [userId], references: [id])
   userId        String
-  createdAt     DateTime       @default(now())
+  createdAt     DateTime      @default(now())
 
   @@index([date])
 }
@@ -223,19 +268,20 @@ model Sale {
 // One installment against a Sale — recorded with its own date/amount/method
 // so a bill can be paid off over several visits instead of one lump sum.
 model SalePayment {
-  id            String        @id @default(cuid())
-  sale          Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  saleId        String
-  date          DateTime
-  amountCents   Int
-  paymentMethod PaymentMethod @default(CASH)
+  id                 String        @id @default(cuid())
+  sale               Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  saleId             String
+  date               DateTime
+  amountCents        Int
+  paymentMethod      String        @default("CASH")
+  account            Account       @relation(fields: [paymentMethod], references: [id], onDelete: Restrict)
   // ADVANCE means this amount was already accounted for as a PartyPayment
   // (RECEIVED) earlier — see getPartyBalanceMap, which nets ADVANCE-sourced
   // sale payments back out of the party's advance pool so it isn't counted
   // as both "still available" and "used to pay this bill".
-  source        PaymentSource @default(CASH)
-  notes         String?
-  createdAt     DateTime      @default(now())
+  source             PaymentSource @default(CASH)
+  notes              String?
+  createdAt          DateTime      @default(now())
   // Reverse side of PartyPayment.sourceSalePayment — the excess-as-advance
   // credit this specific payment spawned, if any.
   excessPartyPayment PartyPayment?
@@ -244,23 +290,23 @@ model SalePayment {
 }
 
 model SaleItem {
-  id         String @id @default(cuid())
-  sale       Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  saleId     String
-  item       Item   @relation(fields: [itemId], references: [id])
-  itemId     String
+  id             String  @id @default(cuid())
+  sale           Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  saleId         String
+  item           Item    @relation(fields: [itemId], references: [id])
+  itemId         String
   // KG, can be fractional (e.g. 1.5).
-  quantity   Float
-  priceCents Int
+  quantity       Float
+  priceCents     Int
   // Pre-tax: quantity * priceCents.
   lineTotalCents Int
   // GST-style rate for this line (e.g. 18 for 18%) — 0 for no tax.
-  taxPercent Float @default(0)
+  taxPercent     Float   @default(0)
   // round(lineTotalCents * taxPercent / 100), stored so historical bills
   // don't recompute differently if the item's price changes later.
-  taxCents   Int     @default(0)
+  taxCents       Int     @default(0)
   // FFA grade (e.g. "FFA-3") — only set when the item is ffaGraded.
-  ffaGrade   String?
+  ffaGrade       String?
 }
 
 model SaleCharge {
@@ -287,7 +333,8 @@ model Purchase {
   totalCents    Int
   // Maintained cache = sum of `payments` — see Sale.paidCents.
   paidCents     Int               @default(0)
-  paymentMethod PaymentMethod     @default(CASH)
+  paymentMethod String            @default("CASH")
+  account       Account           @relation(fields: [paymentMethod], references: [id], onDelete: Restrict)
   notes         String?
   recordedBy    User              @relation(fields: [userId], references: [id])
   userId        String
@@ -298,19 +345,20 @@ model Purchase {
 
 // One installment against a Purchase — see SalePayment.
 model PurchasePayment {
-  id            String        @id @default(cuid())
-  purchase      Purchase      @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  purchaseId    String
-  date          DateTime
-  amountCents   Int
-  paymentMethod PaymentMethod @default(CASH)
+  id                 String        @id @default(cuid())
+  purchase           Purchase      @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  purchaseId         String
+  date               DateTime
+  amountCents        Int
+  paymentMethod      String        @default("CASH")
+  account            Account       @relation(fields: [paymentMethod], references: [id], onDelete: Restrict)
   // ADVANCE means this amount was already accounted for as a PartyPayment
   // (PAID) earlier — see getPartyBalanceMap, which nets ADVANCE-sourced
   // purchase payments back out of the party's advance pool so it isn't
   // counted as both "still available" and "used to pay this bill".
-  source        PaymentSource @default(CASH)
-  notes         String?
-  createdAt     DateTime      @default(now())
+  source             PaymentSource @default(CASH)
+  notes              String?
+  createdAt          DateTime      @default(now())
   // Reverse side of PartyPayment.sourcePurchasePayment — the excess-as-advance
   // credit this specific payment spawned, if any.
   excessPartyPayment PartyPayment?
@@ -319,22 +367,22 @@ model PurchasePayment {
 }
 
 model PurchaseItem {
-  id         String   @id @default(cuid())
-  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  purchaseId String
-  item       Item     @relation(fields: [itemId], references: [id])
-  itemId     String
+  id             String   @id @default(cuid())
+  purchase       Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  purchaseId     String
+  item           Item     @relation(fields: [itemId], references: [id])
+  itemId         String
   // KG, can be fractional (e.g. 1.5).
-  quantity   Float
-  priceCents Int
+  quantity       Float
+  priceCents     Int
   // Pre-tax: quantity * priceCents.
   lineTotalCents Int
   // GST-style rate for this line (e.g. 18 for 18%) — 0 for no tax.
-  taxPercent Float   @default(0)
+  taxPercent     Float    @default(0)
   // round(lineTotalCents * taxPercent / 100) — see SaleItem.taxCents.
-  taxCents   Int     @default(0)
+  taxCents       Int      @default(0)
   // FFA grade (e.g. "FFA-3") — only set when the item is ffaGraded.
-  ffaGrade   String?
+  ffaGrade       String?
 }
 
 model PurchaseCharge {

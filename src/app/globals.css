@@ -9,6 +9,10 @@
 
 :root {
   --background: #fdfcfa;
+  /* Kerafresh brand — leaf green. */
+  --brand: #1baf7a;
+  --accent: #f5a524;
+  --canvas: #f2f0eb;
   --foreground: #171717;
   /* The app forces light theme above, but without this the browser still
      renders native form controls (a <select>'s dropdown list, date pickers)
@@ -20,6 +24,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-brand: var(--brand);
+  --color-accent: var(--accent);
+  --color-canvas: var(--canvas);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

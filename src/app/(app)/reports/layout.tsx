@@ -59,7 +59,7 @@ export default function ReportsLayout({ children }: { children: React.ReactNode 
               aria-current={active ? "page" : undefined}
               className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-sm transition-colors ${
                 active
-                  ? "border-transparent bg-[#1baf7a]/85 font-medium text-white"
+                  ? "border-transparent bg-brand/85 font-medium text-white"
                   : "border-black/10 text-black/70 hover:bg-black/5 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/10"
               }`}
             >
@@ -87,7 +87,7 @@ export default function ReportsLayout({ children }: { children: React.ReactNode 
                     aria-current={active ? "page" : undefined}
                     className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
                       active
-                        ? "bg-[#1baf7a]/85 font-medium text-white"
+                        ? "bg-brand/85 font-medium text-white"
                         : "text-black/70 hover:bg-black/5 hover:text-black dark:text-white/70 dark:hover:bg-white/10"
                     }`}
                   >

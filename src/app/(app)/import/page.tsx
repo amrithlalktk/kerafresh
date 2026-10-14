@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import Card from "@/components/Card";
 import { formatCents } from "@/lib/money";
+import { useAccounts } from "@/lib/useAccounts";
 import {
   isAdminRole,
   parsePaymentMethod,
-  paymentMethodLabel,
+  accountName,
   type Category,
   type Item,
   type Party,
@@ -91,6 +92,7 @@ function parseNumber(value: string): number | null {
 }
 
 export default function ImportPage() {
+  const accounts = useAccounts();
   const [role, setRole] = useState<Role | null>(null);
   const [entityType, setEntityType] = useState<EntityType>("SALE");
   const [saleRows, setSaleRows] = useState<SaleRow[]>([]);
@@ -159,7 +161,7 @@ export default function ImportPage() {
         const amountStr = field(r, "amount");
         const amount = parseNumber(amountStr);
         const methodRaw = field(r, "payment method", "method");
-        const paymentMethod = parsePaymentMethod(methodRaw);
+        const paymentMethod = parsePaymentMethod(methodRaw, accounts);
         const notes = field(r, "notes");
 
         let error: string | undefined;
@@ -190,7 +192,7 @@ export default function ImportPage() {
         const taxPercent = parseNumber(field(r, "tax %", "tax", "tax percent")) ?? 0;
         const paid = parseNumber(field(r, "paid")) ?? 0;
         const methodRaw = field(r, "payment method", "method");
-        const paymentMethod = parsePaymentMethod(methodRaw);
+        const paymentMethod = parsePaymentMethod(methodRaw, accounts);
         const notes = field(r, "notes");
 
         let error: string | undefined;
@@ -439,7 +441,7 @@ export default function ImportPage() {
                           <td className="px-4 py-3 text-right whitespace-nowrap">
                             {formatCents(Math.round(r.amount * 100))}
                           </td>
-                          <td className="px-4 py-3">{paymentMethodLabel(r.paymentMethod)}</td>
+                          <td className="px-4 py-3">{accountName(accounts, r.paymentMethod)}</td>
                           <td className="px-4 py-3">
                             {r.error ? (
                               <span className="text-[#d03b3b]">{r.error}</span>

@@ -4,7 +4,9 @@ import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { formatCents } from "@/lib/money";
 import { formatDate } from "@/lib/date";
-import { PAYMENT_METHODS, paymentMethodLabel, type PaymentLine, type PaymentMethod } from "@/lib/types";
+import { accountName, type PaymentLine, type PaymentMethod } from "@/lib/types";
+import AccountOptions from "@/components/AccountOptions";
+import { useAccounts } from "@/lib/useAccounts";
 
 const inputClass =
   "rounded-md border border-black/15 px-2 py-1.5 text-sm dark:border-white/15 dark:bg-transparent";
@@ -29,7 +31,8 @@ export default function PaymentHistory({
   onChange: () => void;
   canDelete: boolean;
 }) {
-  const [date, setDate] = useState(todayStr());
+
+  const accounts = useAccounts();  const [date, setDate] = useState(todayStr());
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [error, setError] = useState<string | null>(null);
@@ -95,7 +98,7 @@ export default function PaymentHistory({
                     not just the amount that landed on this bill. */}
                 {formatCents(receivedCents)} given on {formatDate(p.date)}
                 <span className="ml-2 text-xs text-black/50 dark:text-white/50">
-                  {paymentMethodLabel(p.paymentMethod)}
+                  {accountName(accounts, p.paymentMethod)}
                 </span>
                 {p.source === "ADVANCE" && (
                   <span className="ml-2 text-xs font-medium text-[#0ca30c]">
@@ -164,11 +167,7 @@ export default function PaymentHistory({
             onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
             className={inputClass}
           >
-            {PAYMENT_METHODS.map((m) => (
-              <option key={m} value={m}>
-                {paymentMethodLabel(m)}
-              </option>
-            ))}
+            <AccountOptions accounts={accounts} current={paymentMethod} />
           </select>
         </div>
         <button

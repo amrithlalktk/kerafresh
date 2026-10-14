@@ -444,3 +444,61 @@ export async function getItemAverageCostMap() {
   }
   return map;
 }
+
+// Available balance per account = opening balance + money in − money out.
+// Only real money movement counts:
+//   in:  sale payments with fresh money (source CASH), advances received
+//        (incl. the excess part of an overpaid bill, stored as a RECEIVED
+//        PartyPayment), and any INCOME transaction
+//   out: purchase payments with fresh money, advances paid, expenses
+//   transfers between own accounts (withdraw/deposit): out of one, into
+//        the other — total money unchanged
+// ADVANCE-sourced bill payments just apply credit already counted when the
+// advance came in, so they're excluded — counting them would double it.
+export async function getAccountBalances() {
+  const [accounts, saleIn, purchaseOut, partyMoves, txMoves, transfersOut, transfersIn] = await Promise.all([
+    db.account.findMany({ orderBy: [{ type: "asc" }, { createdAt: "asc" }] }),
+    db.salePayment.groupBy({
+      by: ["paymentMethod"],
+      where: { source: "CASH" },
+      _sum: { amountCents: true },
+    }),
+    db.purchasePayment.groupBy({
+      by: ["paymentMethod"],
+      where: { source: "CASH" },
+      _sum: { amountCents: true },
+    }),
+    db.partyPayment.groupBy({
+      by: ["paymentMethod", "direction"],
+      _sum: { amountCents: true },
+    }),
+    db.transaction.groupBy({
+      by: ["paymentMethod", "type"],
+      where: { paymentMethod: { not: null } },
+      _sum: { amountCents: true },
+    }),
+    db.accountTransfer.groupBy({ by: ["fromAccountId"], _sum: { amountCents: true } }),
+    db.accountTransfer.groupBy({ by: ["toAccountId"], _sum: { amountCents: true } }),
+  ]);
+
+  const inBy = new Map<string, number>();
+  const outBy = new Map<string, number>();
+  const add = (map: Map<string, number>, id: string | null, cents: number | null) => {
+    if (!id || !cents) return;
+    map.set(id, (map.get(id) ?? 0) + cents);
+  };
+  for (const r of saleIn) add(inBy, r.paymentMethod, r._sum.amountCents);
+  for (const r of purchaseOut) add(outBy, r.paymentMethod, r._sum.amountCents);
+  for (const r of partyMoves)
+    add(r.direction === "RECEIVED" ? inBy : outBy, r.paymentMethod, r._sum.amountCents);
+  for (const r of txMoves)
+    add(r.type === "INCOME" ? inBy : outBy, r.paymentMethod, r._sum.amountCents);
+  for (const r of transfersOut) add(outBy, r.fromAccountId, r._sum.amountCents);
+  for (const r of transfersIn) add(inBy, r.toAccountId, r._sum.amountCents);
+
+  return accounts.map((a) => {
+    const inCents = inBy.get(a.id) ?? 0;
+    const outCents = outBy.get(a.id) ?? 0;
+    return { ...a, inCents, outCents, balanceCents: a.openingBalanceCents + inCents - outCents };
+  });
+}

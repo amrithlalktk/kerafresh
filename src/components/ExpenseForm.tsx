@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { PAYMENT_METHODS, paymentMethodLabel, type Category, type Expense, type PaymentMethod } from "@/lib/types";
+import { type Category, type Expense, type PaymentMethod } from "@/lib/types";
+import AccountOptions from "@/components/AccountOptions";
+import { useAccounts } from "@/lib/useAccounts";
 
 const inputClass =
   "rounded-md border border-black/15 px-3 py-2 text-sm dark:border-white/15 dark:bg-transparent";
@@ -17,7 +19,8 @@ export default function ExpenseForm({
   onSaved: () => void;
   onCancel: () => void;
 }) {
-  const [date, setDate] = useState(
+
+  const accounts = useAccounts();  const [date, setDate] = useState(
     initial ? initial.date.slice(0, 10) : new Date().toISOString().slice(0, 10)
   );
   const [description, setDescription] = useState(initial?.description ?? "");
@@ -114,11 +117,7 @@ export default function ExpenseForm({
         onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
         className={inputClass}
       >
-        {PAYMENT_METHODS.map((m) => (
-          <option key={m} value={m}>
-            {paymentMethodLabel(m)}
-          </option>
-        ))}
+        <AccountOptions accounts={accounts} current={paymentMethod} />
       </select>
       <textarea
         placeholder="Notes (optional)"
