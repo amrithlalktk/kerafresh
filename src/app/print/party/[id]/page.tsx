@@ -51,6 +51,7 @@ export default async function PrintPartyStatementPage({
     sales,
     purchases,
     advances,
+    accounts,
     dueByParty,
     availableAdvanceByParty,
     availableAdvanceForPurchaseByParty,
@@ -62,10 +63,12 @@ export default async function PrintPartyStatementPage({
       orderBy: { date: "asc" },
     }),
     db.partyPayment.findMany({ where: { partyId: id }, orderBy: { date: "asc" } }),
+    db.account.findMany(),
     getPartyBalanceMap(),
     getAvailableAdvanceForSalesMap(),
     getAvailableAdvanceForPurchasesMap(),
   ]);
+  const accountNameById = new Map(accounts.map((a) => [a.id, a.name]));
 
   const balanceCents = party.openingBalanceCents + (dueByParty.get(party.id) ?? 0);
   const availableAdvanceCents = availableAdvanceByParty.get(party.id) ?? 0;
@@ -152,19 +155,48 @@ export default async function PrintPartyStatementPage({
           )}
           {ledger.map((entry, index) => (
             <tr key={index} className="border-b border-black/5">
-              <td className="py-2 whitespace-nowrap">{formatBillDate(entry.date)}</td>
-              <td className="py-2">{entry.type}</td>
+              <td className="py-2 whitespace-nowrap align-top">{formatBillDate(entry.date)}</td>
+              <td className="py-2 align-top">{entry.type}</td>
               <td className="py-2">
                 {entry.ref}
                 {entry.note && <span className="block text-xs text-black/50">{entry.note}</span>}
+                {/* A Sale/Purchase entry carries what was actually billed and
+                    paid — shown here instead of leaving the reference bare,
+                    since this is the only place this statement gets printed
+                    from (the Print button links straight here). */}
+                {entry.items && entry.items.length > 0 && (
+                  <ul className="mt-1 text-xs text-black/60">
+                    {entry.items.map((item, i) => (
+                      <li key={i}>
+                        {item.name} — {item.quantity} × {formatCents(item.priceCents)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {entry.billSummary && entry.billSummary.payments.length > 0 && (
+                  <div className="mt-1 text-xs text-black/60">
+                    <p>
+                      {formatCents(entry.billSummary.totalCents - entry.billSummary.paidCents)}{" "}
+                      balance
+                    </p>
+                    {entry.billSummary.payments.map((p, i) => (
+                      <p key={i}>
+                        {formatCents(p.amountCents)} on {formatBillDate(p.date)} —{" "}
+                        {accountNameById.get(p.paymentMethod) ?? p.paymentMethod}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </td>
-              <td className="py-2 text-right">
+              <td className="py-2 text-right align-top">
                 {entry.amountCents > 0 ? formatCents(entry.amountCents) : "—"}
               </td>
-              <td className="py-2 text-right">
+              <td className="py-2 text-right align-top">
                 {entry.amountCents < 0 ? formatCents(-entry.amountCents) : "—"}
               </td>
-              <td className="py-2 text-right font-medium">{formatCents(balances[index])}</td>
+              <td className="py-2 text-right font-medium align-top">
+                {formatCents(balances[index])}
+              </td>
             </tr>
           ))}
           {ledger.length === 0 && (

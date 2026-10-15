@@ -7,7 +7,7 @@ import { formatCents } from "@/lib/money";
 import { formatDate } from "@/lib/date";
 import { buildLedger, runningBalances } from "@/lib/partyLedger";
 import { downloadReportCsv, downloadReportPdf } from "@/lib/reportExport";
-import type { Party, PartyPayment, Purchase, Sale } from "@/lib/types";
+import { accountName, type Account, type Party, type PartyPayment, type Purchase, type Sale } from "@/lib/types";
 import Card from "@/components/Card";
 import RecordPaymentForm from "@/components/RecordPaymentForm";
 import BillPreviewModal, { type PreviewBillType } from "@/components/BillPreviewModal";
@@ -23,6 +23,7 @@ export default function PartyStatementPage() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [advances, setAdvances] = useState<PartyPayment[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [generatedBy, setGeneratedBy] = useState("");
@@ -32,11 +33,12 @@ export default function PartyStatementPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [partyRes, salesRes, purchasesRes, advancesRes] = await Promise.all([
+    const [partyRes, salesRes, purchasesRes, advancesRes, accountsRes] = await Promise.all([
       fetch(`/api/parties/${params.id}`),
       fetch(`/api/sales?partyId=${params.id}&pageSize=1000`),
       fetch(`/api/purchases?partyId=${params.id}&pageSize=1000`),
       fetch(`/api/parties/${params.id}/payments`),
+      fetch("/api/accounts"),
     ]);
     if (!partyRes.ok) {
       setNotFound(true);
@@ -47,6 +49,7 @@ export default function PartyStatementPage() {
     setSales((await salesRes.json()).sales);
     setPurchases((await purchasesRes.json()).purchases);
     setAdvances(await advancesRes.json());
+    setAccounts(await accountsRes.json());
     setLoading(false);
   }, [params.id]);
 
@@ -106,21 +109,50 @@ export default function PartyStatementPage() {
       const items = entry.items ?? [];
       if (items.length === 0) {
         rows.push([formatDate(entry.date), entry.type, ref, "", "", "", debit, credit, balance]);
-        return;
+      } else {
+        items.forEach((item, i) => {
+          rows.push([
+            i === 0 ? formatDate(entry.date) : "",
+            i === 0 ? entry.type : "",
+            i === 0 ? ref : "",
+            item.name,
+            String(item.quantity),
+            (item.priceCents / 100).toFixed(2),
+            i === 0 ? debit : "",
+            i === 0 ? credit : "",
+            i === 0 ? balance : "",
+          ]);
+        });
       }
-      items.forEach((item, i) => {
+      // The bill's own payment history (date/amount/account), nested right
+      // under it — on top of the "Payment received/made" entries the same
+      // payments already get elsewhere in this ledger at their own date.
+      if (entry.billSummary && entry.billSummary.payments.length > 0) {
         rows.push([
-          i === 0 ? formatDate(entry.date) : "",
-          i === 0 ? entry.type : "",
-          i === 0 ? ref : "",
-          item.name,
-          String(item.quantity),
-          (item.priceCents / 100).toFixed(2),
-          i === 0 ? debit : "",
-          i === 0 ? credit : "",
-          i === 0 ? balance : "",
+          "",
+          "",
+          `Bill balance: ${((entry.billSummary.totalCents - entry.billSummary.paidCents) / 100).toFixed(2)}`,
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
         ]);
-      });
+        entry.billSummary.payments.forEach((p) => {
+          rows.push([
+            "",
+            "",
+            `Paid ${(p.amountCents / 100).toFixed(2)} on ${formatDate(p.date)} — ${accountName(accounts, p.paymentMethod)}`,
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+          ]);
+        });
+      }
     });
     return rows;
   }
@@ -310,6 +342,34 @@ export default function PartyStatementPage() {
                         </td>
                       </tr>
                     )),
+                    ...(entry.billSummary && entry.billSummary.payments.length > 0
+                      ? [
+                          <tr
+                            key={`${index}-balance`}
+                            className="hidden border-t border-black/5 text-xs text-black/60 print:table-row dark:border-white/5 dark:text-white/60"
+                          >
+                            <td className="px-4 py-1" />
+                            <td className="px-4 py-1" />
+                            <td className="px-4 py-1" colSpan={4}>
+                              {formatCents(entry.billSummary.totalCents - entry.billSummary.paidCents)}{" "}
+                              balance
+                            </td>
+                          </tr>,
+                          ...entry.billSummary.payments.map((p, i) => (
+                            <tr
+                              key={`${index}-payment-${i}`}
+                              className="hidden border-t border-black/5 text-xs text-black/60 print:table-row dark:border-white/5 dark:text-white/60"
+                            >
+                              <td className="px-4 py-1" />
+                              <td className="px-4 py-1" />
+                              <td className="px-4 py-1" colSpan={4}>
+                                {formatCents(p.amountCents)} on {formatDate(p.date)} —{" "}
+                                {accountName(accounts, p.paymentMethod)}
+                              </td>
+                            </tr>
+                          )),
+                        ]
+                      : []),
                   ];
               })}
               {ledger.length === 0 && (

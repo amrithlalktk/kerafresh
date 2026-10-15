@@ -16,6 +16,17 @@ export type LedgerEntry = {
   // entries, which have no items of their own) — lets exports show what was
   // actually in the bill instead of just its reference.
   items?: LedgerItem[];
+  // Set only on the "Sale"/"Purchase" entry itself — the bill's OWN
+  // total/paid/payment list (as opposed to `amountCents`/the running
+  // `balances[]` from runningBalances, which track the party's overall
+  // balance, not this specific bill's). Lets a printed statement show each
+  // bill's own payment history grouped right under it, same as the main
+  // Sale/Purchase list page's "Payments" panel.
+  billSummary?: {
+    totalCents: number;
+    paidCents: number;
+    payments: { date: string | Date; amountCents: number; paymentMethod: string }[];
+  };
 };
 
 // Only the fields this module actually reads — `date` as `string | Date` so
@@ -25,6 +36,7 @@ export type LedgerEntry = {
 type LedgerPayment = {
   date: string | Date;
   amountCents: number;
+  paymentMethod: string;
   source: PaymentSource;
   // Set when this payment overshot the bill's due amount — see
   // PartyPayment.sourceSalePayment/sourcePurchasePayment. Folded into this
@@ -38,6 +50,7 @@ type LedgerSale = {
   date: string | Date;
   billNumber: number;
   totalCents: number;
+  paidCents: number;
   items: LedgerBillItem[];
   payments: LedgerPayment[];
 };
@@ -46,6 +59,7 @@ type LedgerPurchase = {
   date: string | Date;
   billNumber: number;
   totalCents: number;
+  paidCents: number;
   items: LedgerBillItem[];
   payments: LedgerPayment[];
 };
@@ -85,6 +99,15 @@ export function buildLedger(
       amountCents: s.totalCents,
       bill,
       items: s.items.map((l) => ({ name: l.item.name, quantity: l.quantity, priceCents: l.priceCents })),
+      billSummary: {
+        totalCents: s.totalCents,
+        paidCents: s.paidCents,
+        payments: s.payments.map((p) => ({
+          date: p.date,
+          amountCents: p.amountCents,
+          paymentMethod: p.paymentMethod,
+        })),
+      },
     });
     for (const p of s.payments) {
       if (p.source === "ADVANCE") {
@@ -122,6 +145,15 @@ export function buildLedger(
       amountCents: -p.totalCents,
       bill,
       items: p.items.map((l) => ({ name: l.item.name, quantity: l.quantity, priceCents: l.priceCents })),
+      billSummary: {
+        totalCents: p.totalCents,
+        paidCents: p.paidCents,
+        payments: p.payments.map((pay) => ({
+          date: pay.date,
+          amountCents: pay.amountCents,
+          paymentMethod: pay.paymentMethod,
+        })),
+      },
     });
     for (const pay of p.payments) {
       if (pay.source === "ADVANCE") {
