@@ -2,7 +2,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { COMPANY } from "@/lib/company";
 import { formatBillNumber, formatCents } from "@/lib/money";
-import { formatBillDate } from "@/lib/date";
+import { formatBillDate, formatDateTime } from "@/lib/date";
 import type { PaymentMethod } from "@/lib/types";
 import { displayUnit } from "@/lib/units";
 
@@ -143,7 +143,7 @@ export function buildInvoicePdfBuffer(
   }
 
   doc.setFontSize(7);
-  doc.text(`Generated on ${new Date().toLocaleString()} by ${generatedBy}`, marginX, y + 6);
+  doc.text(`Generated on ${formatDateTime()} by ${generatedBy}`, marginX, y + 6);
 
   return Buffer.from(doc.output("arraybuffer"));
 }

@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatBillNumber, formatCents } from "@/lib/money";
-import { formatBillDate } from "@/lib/date";
+import { formatBillDate, formatDateTime } from "@/lib/date";
 import { COMPANY } from "@/lib/company";
 import { displayUnit } from "@/lib/units";
 import PrintButton from "@/components/PrintButton";
@@ -131,7 +131,7 @@ export default async function PrintSalePage({
       )}
 
       <p className="mt-8 text-xs text-black/40">
-        Printed on {new Date().toLocaleString()} by {session.name}
+        Printed on {formatDateTime()} by {session.name}
       </p>
     </div>
   );

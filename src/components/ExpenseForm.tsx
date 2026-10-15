@@ -4,6 +4,7 @@ import { useState } from "react";
 import { type Category, type Expense, type PaymentMethod } from "@/lib/types";
 import AccountOptions from "@/components/AccountOptions";
 import { useAccounts } from "@/lib/useAccounts";
+import DateInput from "@/components/DateInput";
 
 const inputClass =
   "rounded-md border border-black/15 px-3 py-2 text-sm dark:border-white/15 dark:bg-transparent";
@@ -75,8 +76,7 @@ export default function ExpenseForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-      <input
-        type="date"
+      <DateInput
         required
         value={date}
         onChange={(e) => setDate(e.target.value)}
