@@ -4,6 +4,7 @@ import { useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import Watermark from "@/components/Watermark";
+import ChatWidget from "@/components/ChatWidget";
 import type { SessionPayload } from "@/lib/auth";
 
 // Sidebar and TopBar need to share one bit of state (is the mobile drawer
@@ -44,6 +45,7 @@ export default function AppShell({
           {children}
         </main>
       </div>
+      <ChatWidget />
     </div>
   );
 }
