@@ -3,11 +3,11 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { isAdminRole } from "@/lib/types";
 import { purchaseSchema } from "@/lib/validation";
-import { toCents } from "@/lib/money";
+import { formatBillNumber, toCents } from "@/lib/money";
 import type { Prisma } from "@prisma/client";
 
 const PURCHASE_INCLUDE = {
-  party: { select: { name: true } },
+  party: { select: { name: true, email: true } },
   items: { include: { item: { select: { name: true, unit: true } } } },
   charges: true,
   payments: {
@@ -63,7 +63,18 @@ export async function PATCH(
   // paid/paymentMethod are intentionally not applied here — once a purchase
   // exists, its paidCents only changes via the payment-history endpoint
   // (POST /api/purchases/[id]/payments).
-  const { date, partyId, items, charges, notes } = parsed.data;
+  const { date, partyId, items, charges, notes, billNumber } = parsed.data;
+
+  // Renumbering: any number not used by another purchase.
+  const current = await db.purchase.findUnique({ where: { id }, select: { billNumber: true } });
+  if (!current) return NextResponse.json({ error: "Purchase not found" }, { status: 404 });
+  const renumber = billNumber !== undefined && billNumber !== current.billNumber;
+  if (renumber && (await db.purchase.count({ where: { billNumber, id: { not: id } } })) > 0) {
+    return NextResponse.json(
+      { error: `Purchase #${formatBillNumber(billNumber)} is already used — pick a different number.` },
+      { status: 409 }
+    );
+  }
   const lineData = items.map((line) => {
     const priceCents = toCents(line.price);
     // Quantity is in KG and can be fractional (e.g. 1.5) — round to whole
@@ -95,6 +106,7 @@ export async function PATCH(
     return tx.purchase.update({
       where: { id },
       data: {
+        ...(renumber ? { billNumber } : {}),
         date: new Date(date),
         partyId: partyId || null,
         totalCents,

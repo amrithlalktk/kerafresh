@@ -126,7 +126,11 @@ export const saleSchema = billSchemaBase.extend({
   billNumber: z.number().int().positive("Bill number must be a positive number"),
 });
 
-export const purchaseSchema = billSchemaBase;
+// Purchases are numbered automatically, but the number can be set or
+// corrected by hand (omit it to get the next free number).
+export const purchaseSchema = billSchemaBase.extend({
+  billNumber: z.number().int().positive("Bill number must be a positive number").optional(),
+});
 
 // A single installment recorded against an existing Sale/Purchase.
 export const paymentSchema = z.object({

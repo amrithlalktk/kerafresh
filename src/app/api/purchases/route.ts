@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { purchaseSchema } from "@/lib/validation";
-import { toCents } from "@/lib/money";
+import { formatBillNumber, toCents } from "@/lib/money";
 import { getAvailableAdvanceForPurchasesMap } from "@/lib/balances";
 import type { Prisma } from "@prisma/client";
 
 const PAGE_SIZE = 25;
 const PURCHASE_INCLUDE = {
-  party: { select: { name: true } },
+  party: { select: { name: true, email: true } },
   items: { include: { item: { select: { name: true, unit: true } } } },
   charges: true,
   payments: {
@@ -138,8 +138,18 @@ export async function POST(request: Request) {
 
   const paidCents = toCents(paid);
   const cashPaidCents = Math.max(0, paidCents - advanceAppliedCents);
+  // A typed bill number must be free; otherwise take the next one.
+  if (
+    parsed.data.billNumber &&
+    (await db.purchase.count({ where: { billNumber: parsed.data.billNumber } })) > 0
+  ) {
+    return NextResponse.json(
+      { error: `Purchase #${formatBillNumber(parsed.data.billNumber)} is already used — pick a different number.` },
+      { status: 409 }
+    );
+  }
   const lastBill = await db.purchase.aggregate({ _max: { billNumber: true } });
-  const billNumber = (lastBill._max.billNumber ?? 0) + 1;
+  const billNumber = parsed.data.billNumber ?? (lastBill._max.billNumber ?? 0) + 1;
   // Split "paid now" into an ADVANCE-sourced entry (already-given money, just
   // applied to this bill) and a CASH entry (new money) — mirrors sales/route.ts.
   const paymentData = [

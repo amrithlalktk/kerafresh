@@ -12,6 +12,7 @@ import QuickEntryRow from "@/components/QuickEntryRow";
 import PaymentHistory from "@/components/PaymentHistory";
 import PaymentStatusIcon from "@/components/PaymentStatusIcon";
 import SearchInput from "@/components/SearchInput";
+import EmailPdfButton from "@/components/EmailPdfButton";
 
 export default function PurchasePage() {
   const searchParams = useSearchParams();
@@ -284,6 +285,14 @@ export default function PurchasePage() {
                       >
                         Payments
                       </button>
+                      <EmailPdfButton
+                        endpoint={`/api/print/purchase/${purchase.id}/email`}
+                        defaultRecipient={
+                          purchase.party?.email ? { name: purchase.party.name, email: purchase.party.email } : null
+                        }
+                        label="Email"
+                        className="mr-2 underline underline-offset-4 disabled:opacity-40"
+                      />
                       <button onClick={() => openEdit(purchase)} className="mr-2 underline underline-offset-4">
                         Edit
                       </button>
