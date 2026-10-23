@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDate } from "@/lib/date";
 import { useCallback, useEffect, useState } from "react";
 import { formatBillNumber, formatCents } from "@/lib/money";
 import Card from "@/components/Card";
@@ -151,7 +152,7 @@ export default function DayBookPage() {
     if (rows.length === 0) return;
     const args = {
       filename: `day_book_${date}.${kind}`,
-      title: `Day Book — ${date}`,
+      title: `Day Book — ${formatDate(date)}`,
       header: HEADER,
       rows: csvRows(rows),
       generatedBy,
@@ -198,7 +199,7 @@ export default function DayBookPage() {
               endpoint="/api/reports/email-pdf"
               body={{
                 filename: `day_book_${date}.pdf`,
-                title: `Day Book — ${date}`,
+                title: `Day Book — ${formatDate(date)}`,
                 header: HEADER,
                 rows: csvRows(rows),
               }}

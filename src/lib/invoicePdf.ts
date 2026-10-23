@@ -5,6 +5,8 @@ import { formatBillNumber, formatCents } from "@/lib/money";
 import { formatBillDate, formatDateTime } from "@/lib/date";
 import type { PaymentMethod } from "@/lib/types";
 import { displayUnit } from "@/lib/units";
+import { applyPdfFont } from "@/lib/pdfFont";
+import { PDF_FONT_BASE64 } from "@/lib/pdfFontData";
 
 // Mirrors src/app/print/sale/[id]/page.tsx and .../purchase/[id]/page.tsx —
 // same fields, same layout, so the emailed PDF matches what printing the
@@ -42,6 +44,7 @@ export function buildInvoicePdfBuffer(
   generatedBy: string
 ) {
   const doc = new jsPDF();
+  applyPdfFont(doc, PDF_FONT_BASE64);
   const marginX = 14;
   const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -103,8 +106,12 @@ export function buildInvoicePdfBuffer(
     startY: y,
     head: [["Item", "Qty", "Price", "Tax", "Amount"]],
     body: rows,
-    styles: { fontSize: 9 },
+    styles: { fontSize: 9, font: "Geist" },
     headStyles: { fillColor: [30, 34, 49] },
+    // Headings sit over their figures.
+    didParseCell: (data) => {
+      if (data.section === "head" && data.column.index > 0) data.cell.styles.halign = "right";
+    },
     columnStyles: {
       1: { halign: "right" },
       2: { halign: "right" },
